@@ -1,0 +1,104 @@
+# Build directories and outputs
+build/
+bin/
+obj/
+out/
+dist/
+.vs/
+.vscode/
+CMakeSettings.json
+
+# Compiler & Linker outputs
+*.exe
+*.obj
+*.o
+*.lib
+*.a
+*.pdb
+*.ilk
+*.idb
+*.dll
+*.so
+*.dylib
+
+# ==============================================================================
+# STRICT ASSET POLICY: NO COPYRIGHTED ASSETS IN REPOSITORY UNDER ANY CIRCUMSTANCES
+# ==============================================================================
+# Asset directories & packs
+assets/
+asset_pack/
+asset_packs/
+assets_pack/
+dist/assets/
+build/assets/
+*.pak
+*.dat
+*.wad
+*.raw
+
+# ROMs and disc/cartridge dumps
+rom/
+roms/
+*.sfc
+*.smc
+*.gen
+*.smd
+*.bin
+*.iso
+*.cue
+*.chd
+*.rom
+*.dump
+*.srm
+rom.cfg
+
+# Extracted audio, music, and sound effects
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.spc
+*.pcm
+*.mid
+*.midi
+extracted_audio/
+extracted_wavs/
+
+# Extracted graphics, sprites, and palettes
+*.bmp
+*.tga
+*.chr
+*.pal
+extracted_art/
+extracted_sprites/
+dumps/
+
+# Reverse engineering and disassembler databases
+ghidra-projects/
+build/ghidra-*
+*.gpr
+*.rep/
+.analysis/
+ida/
+*.idb
+*.i64
+
+# Python and tooling cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+venv/
+.venv/
+
+# Logs and transient files
+*.log
+last_error.log
+*.tmp
+*.bak
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+Desktop.ini
