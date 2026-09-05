@@ -388,6 +388,30 @@ void sub_c139f3_init_phase7(struct mf_game *game) {
     game->ready_for_jump = true;
 }
 
+/*
+ * Subroutine: sub_c122c6_init_phase8
+ * Bank:       $C1
+ * Address:    $C1:22C6
+ * File Offset: 0x0122C6
+ * Description: Eighth phase of system initialization called from the cold boot
+ *              dispatcher. Re-synchronizes the primary system state word ($0545)
+ *              into direct page variable ($DA) and returns via RTL to the cold
+ *              boot dispatcher at $C0:CB9C.
+ */
+void sub_c122c6_init_phase8(struct mf_game *game) {
+    if (!game) return;
+
+    /* Re-synchronize state word from $0545 into direct page $DA */
+    game->wram[0x00DA] = game->wram[0x0545];
+    game->wram[0x00DB] = game->wram[0x0546];
+
+    /* Return via RTL to cold boot caller at $C0:CB9C */
+    game->current_pc = MF_SNES_ADDR_BOOT_CONT8;
+    game->next_pc = MF_SNES_ADDR_BOOT_TABLES;
+    game->state = MF_GAME_STATE_BOOT_TABLES;
+    game->ready_for_jump = true;
+}
+
 
 
 

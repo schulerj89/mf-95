@@ -121,4 +121,16 @@ void sub_c10463_init_controllers(struct mf_game *game);
  */
 void sub_c139f3_init_phase7(struct mf_game *game);
 
+/*
+ * Subroutine: sub_c122c6_init_phase8
+ * Bank:       $C1
+ * Address:    $C1:22C6
+ * File Offset: 0x0122C6
+ * Description: Eighth phase of system initialization called from the cold boot
+ *              dispatcher. Re-synchronizes the primary system state word ($0545)
+ *              into direct page variable ($DA) and returns via RTL to the cold
+ *              boot dispatcher at $C0:CB9C.
+ */
+void sub_c122c6_init_phase8(struct mf_game *game);
+
 #endif /* MF_SYSTEM_H */

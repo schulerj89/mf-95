@@ -23,6 +23,8 @@
 #define MF_SNES_ADDR_INIT_PHASE7   0xC139F3
 #define MF_SNES_ADDR_BOOT_CONT7    0xC0CB98
 #define MF_SNES_ADDR_INIT_PHASE8   0xC122C6
+#define MF_SNES_ADDR_BOOT_CONT8    0xC0CB9C
+#define MF_SNES_ADDR_BOOT_TABLES   0xC0CB9C
 
 #define MF_SNES_FILE_OFFSET_RESET_VECTOR  0x00CB63
 #define MF_SNES_FILE_OFFSET_BOOT_ENTRY    0x00CB6F
@@ -41,6 +43,8 @@
 #define MF_SNES_FILE_OFFSET_INIT_PHASE7   0x0139F3
 #define MF_SNES_FILE_OFFSET_BOOT_CONT7    0x00CB98
 #define MF_SNES_FILE_OFFSET_INIT_PHASE8   0x0122C6
+#define MF_SNES_FILE_OFFSET_BOOT_CONT8    0x00CB9C
+#define MF_SNES_FILE_OFFSET_BOOT_TABLES   0x00CB9C
 
 #define MF_WRAM_SIZE 0x20000 /* 128 KiB SNES Work RAM */
 #define MF_SRAM_SIZE 0x2000  /* 8 KiB SNES Battery-Backed Save RAM ($30:6000-$7FFF) */
@@ -56,6 +60,7 @@ typedef enum {
     MF_GAME_STATE_INIT_PHASE6,
     MF_GAME_STATE_INIT_PHASE7,
     MF_GAME_STATE_INIT_PHASE8,
+    MF_GAME_STATE_BOOT_TABLES,
     MF_GAME_STATE_TITLE,
     MF_GAME_STATE_MENU,
     MF_GAME_STATE_GAMEPLAY
@@ -98,12 +103,12 @@ void mf_game_init(mf_game_t *game);
 void mf_boot_reset(mf_game_t *game);
 
 /*
- * Subroutine: sub_c122c6_init_phase8 (Placeholder / Next Target)
- * Bank:       $C1
- * Address:    $C1:22C6
- * File Offset: 0x0122C6
- * Description: Eighth system initialization routine called after sub_c139f3 returns.
+ * Subroutine: sub_c0cb9c_boot_tables (Placeholder / Next Target)
+ * Bank:       $C0
+ * Address:    $C0:CB9C
+ * File Offset: 0x00CB9C
+ * Description: Cold boot table transfer and final system initialization routine.
  */
-void sub_c122c6_init_phase8(mf_game_t *game);
+void sub_c0cb9c_boot_tables(mf_game_t *game);
 
 #endif /* MF_GAME_H */

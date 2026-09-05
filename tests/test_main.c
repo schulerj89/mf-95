@@ -317,6 +317,41 @@ static bool test_init_phase7_subroutine(void) {
     return true;
 }
 
+static bool test_init_phase8_subroutine(void) {
+    mf_game_t game;
+    mf_game_init(&game);
+    mf_boot_reset(&game);
+    sub_c10000_init_system(&game);
+    sub_c122c0_init_phase2(&game);
+    sub_c11823_init_phase3(&game);
+    sub_c10966_init_phase4(&game);
+    sub_c11f04_init_phase5(&game);
+    sub_c0ce46_init_phase6(&game);
+    sub_c139f3_init_phase7(&game);
+
+    if (game.state != MF_GAME_STATE_INIT_PHASE8) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE8) return false;
+
+    /* Dirty $DA to verify it re-synchronizes with $0545 */
+    game.wram[0x00DA] = 0x00;
+    game.wram[0x00DB] = 0x00;
+
+    sub_c122c6_init_phase8(&game);
+
+    /* Verify $DA re-synchronized with $0545 (0x4F0C) */
+    if (game.wram[0x00DA] != game.wram[0x0545]) return false;
+    if (game.wram[0x00DB] != game.wram[0x0546]) return false;
+    if (game.wram[0x00DA] != 0x0C || game.wram[0x00DB] != 0x4F) return false;
+
+    /* Verify return to $C0:CB9C and next target $C0:CB9C (Boot Tables) */
+    if (game.current_pc != MF_SNES_ADDR_BOOT_CONT8) return false;
+    if (game.next_pc != MF_SNES_ADDR_BOOT_TABLES) return false;
+    if (!game.ready_for_jump) return false;
+    if (game.state != MF_GAME_STATE_BOOT_TABLES) return false;
+
+    return true;
+}
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -431,9 +466,19 @@ int main(int argc, char **argv) {
         failures++;
     }
 
+    /* 11. Test Subroutine $C1:22C6 (Phase 8 Init) */
+    printf("\n[*] Running System Init Phase 8 Subroutine Self-Test ($C1:22C6)...\n");
+    if (test_init_phase8_subroutine()) {
+        printf("    [PASS] Subroutine $C1:22C6: Direct page $DA re-synchronized with $0545\n");
+        printf("           (0x4F0C), and RTL return to $C0:CB9C verified.\n");
+    } else {
+        printf("    [FAIL] Subroutine $C1:22C6: Phase 8 initialization verification failed.\n");
+        failures++;
+    }
+
     printf("\n----------------------------------------------------\n");
     if (failures == 0) {
-        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966, $C1:1F04, $C0:CE46, $C1:39F3)\n");
+        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966, $C1:1F04, $C0:CE46, $C1:39F3, $C1:22C6)\n");
         printf("====================================================\n");
         return 0;
     } else {
