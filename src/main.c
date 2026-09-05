@@ -318,8 +318,11 @@ int main(int argc, char **argv) {
     mf_game_state_t last_logged_state = g_game.state;
     printf("      -> State: %s (PC: $0x%06X)\n", get_state_name(g_game.state), (unsigned int)g_game.current_pc);
 
-    /* Step until we reach the interactive scene waiting point */
+    /* Step through hardware cold boot to Title / Intro scene entry */
     for (int step_count = 0; step_count < 20; step_count++) {
+        if (g_game.state == MF_GAME_STATE_TITLE) {
+            break;
+        }
         mf_game_step(&g_game);
         if (g_game.state != last_logged_state) {
             printf("      -> State: %s (PC: $0x%06X, Next: $0x%06X)\n",
@@ -327,9 +330,6 @@ int main(int argc, char **argv) {
                    (unsigned int)g_game.current_pc,
                    (unsigned int)g_game.next_pc);
             last_logged_state = g_game.state;
-        }
-        if (g_game.state == MF_GAME_STATE_MENU && (g_game.next_pc == MF_SNES_ADDR_MENU_POLL || g_game.next_pc == MF_SNES_ADDR_MENU_RENDER)) {
-            break;
         }
     }
 

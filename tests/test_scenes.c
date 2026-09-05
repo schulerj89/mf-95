@@ -17,7 +17,7 @@ static bool test_title_screen_subroutine(void) {
     if (game.state != MF_GAME_STATE_TITLE) return false;
     if (game.next_pc != MF_SNES_ADDR_TITLE_SCREEN) return false;
 
-    /* Execute Mode 1 handler */
+    /* Execute Mode 1 handler Frame 1 (Intro setup) */
     sub_c14de2_title_screen(&game);
 
     /* Verify screen unblanked after asset load */
@@ -30,7 +30,14 @@ static bool test_title_screen_subroutine(void) {
     /* Verify palette setup flag set */
     if (game.wram[0x0490] != 0x01) return false;
 
-    /* Verify transition to Mode 2 (Main Menu, $1EF0 = 0x0002) */
+    /* Verify intro active in sub-mode 1 */
+    if (game.wram[0x1EF4] != 0x01) return false;
+    if (game.state != MF_GAME_STATE_TITLE) return false;
+
+    /* Trigger Start button to skip intro and verify transition to Mode 2 (Main Menu, $1EF0 = 0x0002) */
+    game.wram[0x00EC] = 0x10;
+    sub_c14de2_title_screen(&game);
+
     if (game.wram[0x1EF0] != 0x02 || game.wram[0x1EF1] != 0x00) return false;
     if (game.current_pc != MF_SNES_ADDR_TITLE_SCREEN) return false;
     if (game.next_pc != MF_SNES_ADDR_MAIN_MENU) return false;
@@ -53,6 +60,8 @@ static bool test_main_menu_subroutine(void) {
     sub_c139f3_init_phase7(&game);
     sub_c122c6_init_phase8(&game);
     sub_c0cb9c_boot_tables(&game);
+    sub_c14de2_title_screen(&game);
+    game.wram[0x00EC] = 0x10;
     sub_c14de2_title_screen(&game);
 
     if (game.state != MF_GAME_STATE_MENU) return false;
@@ -117,6 +126,8 @@ static bool test_menu_select_subroutine(void) {
     sub_c122c6_init_phase8(&game);
     sub_c0cb9c_boot_tables(&game);
     sub_c14de2_title_screen(&game);
+    game.wram[0x00EC] = 0x10;
+    sub_c14de2_title_screen(&game);
     sub_c15467_main_menu(&game);
 
     if (game.state != MF_GAME_STATE_MENU) return false;
@@ -168,6 +179,8 @@ static bool test_menu_poll_subroutine(void) {
     sub_c139f3_init_phase7(&game);
     sub_c122c6_init_phase8(&game);
     sub_c0cb9c_boot_tables(&game);
+    sub_c14de2_title_screen(&game);
+    game.wram[0x00EC] = 0x10;
     sub_c14de2_title_screen(&game);
     sub_c15467_main_menu(&game);
     sub_c155ae_menu_select(&game);

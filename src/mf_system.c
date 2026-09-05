@@ -194,8 +194,10 @@ void sub_c101d7_load_ppu_table(struct mf_game *game, const uint8_t *table) {
 static const uint8_t s_font8x8[128][8] = {
     [' '] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},
     ['!'] = {0x18,0x18,0x18,0x18,0x18,0x00,0x18,0x00},
+    ['\"']= {0x66,0x66,0x66,0x00,0x00,0x00,0x00,0x00},
     ['\'']= {0x18,0x18,0x08,0x10,0x00,0x00,0x00,0x00},
     ['+'] = {0x00,0x18,0x18,0x7E,0x18,0x18,0x00,0x00},
+    [','] = {0x00,0x00,0x00,0x00,0x00,0x18,0x18,0x30},
     ['-'] = {0x00,0x00,0x00,0x7E,0x00,0x00,0x00,0x00},
     ['.'] = {0x00,0x00,0x00,0x00,0x00,0x18,0x18,0x00},
     ['/'] = {0x02,0x06,0x0C,0x18,0x30,0x60,0x40,0x00},
@@ -243,7 +245,7 @@ static const uint8_t s_font8x8[128][8] = {
 static void vram_draw_string(uint8_t *vram, uint16_t map_base, int x, int y, const char *text, uint8_t pal) {
     int len = (int)strlen(text);
     for (int i = 0; i < len; i++) {
-        if (x + i >= 32 || y >= 28) break;
+        if (x + i >= 32 || y >= 32) break;
         uint32_t addr = (map_base + ((uint32_t)y * 32 + (uint32_t)(x + i)) * 2) & (MF_PPU_VRAM_SIZE - 1);
         uint16_t entry = ((uint16_t)pal << 10) | (uint8_t)text[i];
         vram[addr] = (uint8_t)(entry & 0xFF);
@@ -808,37 +810,155 @@ void sub_c0cb9c_boot_tables(struct mf_game *game) {
  * File Offset: 0x014DE2
  * Description: Primary game mode 1 handler invoked by the main loop dispatcher.
  *              Initializes PPU display parameters, prepares title background
- *              and sprite resource buffers (Chunks 1-4 from Bank $C6), queues
- *              title music track ($4A51), polls controller inputs, and transitions
- *              to Main Menu ($1EF0 = 0x0002, $C1:5467) on start button trigger.
+ *              and intro splash buffers (EA Sports logo and theme $4A51),
+ *              polls controller inputs, and transitions to Main Menu ($1EF0 = 0x0002,
+ *              $C1:5467) upon completion of the intro sequence or Start button press.
  */
 void sub_c14de2_title_screen(struct mf_game *game) {
     if (!game) return;
 
-    /* Step 1: Force screen blanking during asset setup */
-    game->ppu.forced_blank = true;
+    /* Intro CGRAM Palettes:
+     * Color 0: Pure Black (0x0000)
+     * Color 1: Pure White (0x7FFF)
+     * Color 2: Bright Gold (BGR555: 0x133F)
+     * Color 3: Electric Blue (BGR555: 0x7E40)
+     * Color 4: EA Crimson Red (BGR555: 0x107C)
+     * Color 5: Silver (BGR555: 0x5AD6)
+     */
+    static const uint16_t s_intro_cgram[16] = {
+        0x0000, 0x7FFF, 0x133F, 0x7E40, 0x107C, 0x5AD6, 0x0000, 0x0000,
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000
+    };
 
-    /* Step 2: Reset controller buffers */
-    sub_c10463_init_controllers(game);
-    game->wram[0x0049] = 0x00;
+    static const uint8_t s_shape_square[8]   = { 0x00, 0x7E, 0x7E, 0x7E, 0x7E, 0x7E, 0x7E, 0x00 };
+    static const uint8_t s_shape_circle[8]   = { 0x00, 0x3C, 0x7E, 0x7E, 0x7E, 0x7E, 0x3C, 0x00 };
+    static const uint8_t s_shape_triangle[8] = { 0x00, 0x18, 0x3C, 0x3C, 0x7E, 0x7E, 0xFF, 0x00 };
 
-    /* Step 3: Clear sprite OAM entries */
-    memset(game->ppu.oam, 0, sizeof(game->ppu.oam));
+    /* Sub-mode 0: Initial Intro Setup */
+    if (game->wram[0x1EF4] == 0) {
+        /* Step 1: Blank display while setting up intro VRAM */
+        game->ppu.forced_blank = true;
 
-    /* Step 4: Queue Title Music / Sound theme ($4A51) */
-    game->wram[0x05A7] = 0x51;
-    game->wram[0x05A8] = 0x4A;
+        /* Step 2: Reset controller buffers */
+        sub_c10463_init_controllers(game);
+        game->wram[0x0049] = 0x00;
 
-    /* Step 5: Configure Title palette and display state */
-    game->wram[0x0490] = 0x01;
+        /* Step 3: Clear sprite OAM entries */
+        memset(game->ppu.oam, 0, sizeof(game->ppu.oam));
 
-    /* Step 6: Unblank screen for presentation */
-    game->ppu.forced_blank = false;
-    game->ppu.brightness = 0x0F;
+        /* Step 4: Queue Title / Intro Music track ($4A51) */
+        game->wram[0x05A7] = 0x51;
+        game->wram[0x05A8] = 0x4A;
 
-    /* Step 7: Advance scene mode to Main Menu ($1EF0 = 0x0002) */
+        /* Step 5: Configure Title palette and display state */
+        game->wram[0x0490] = 0x01;
+        for (int i = 0; i < 16; i++) {
+            game->ppu.cgram[i * 2] = (uint8_t)(s_intro_cgram[i] & 0xFF);
+            game->ppu.cgram[i * 2 + 1] = (uint8_t)(s_intro_cgram[i] >> 8);
+        }
+
+        /* Step 6: Setup VRAM Character Tiles at 0x1000 */
+        uint16_t base = 0x1000;
+        for (int ch = 32; ch < 127; ch++) {
+            uint32_t ch_addr = base + (uint32_t)ch * 32;
+            const uint8_t *g = s_font8x8[ch];
+            for (int y = 0; y < 8; y++) {
+                uint8_t row = g[y];
+                game->ppu.vram[ch_addr + y * 2] = row;
+                game->ppu.vram[ch_addr + y * 2 + 1] = 0;
+                game->ppu.vram[ch_addr + y * 2 + 16] = 0;
+                game->ppu.vram[ch_addr + y * 2 + 17] = 0;
+            }
+        }
+
+        /* Tile 20: Square (Color 3: Blue) */
+        uint32_t sq_addr = base + 20 * 32;
+        for (int y = 0; y < 8; y++) {
+            uint8_t row = s_shape_square[y];
+            game->ppu.vram[sq_addr + y * 2] = 0;
+            game->ppu.vram[sq_addr + y * 2 + 1] = row;
+            game->ppu.vram[sq_addr + y * 2 + 16] = 0;
+            game->ppu.vram[sq_addr + y * 2 + 17] = 0;
+        }
+
+        /* Tile 21: Circle (Color 2: Gold) */
+        uint32_t cr_addr = base + 21 * 32;
+        for (int y = 0; y < 8; y++) {
+            uint8_t row = s_shape_circle[y];
+            game->ppu.vram[cr_addr + y * 2] = 0;
+            game->ppu.vram[cr_addr + y * 2 + 1] = row;
+            game->ppu.vram[cr_addr + y * 2 + 16] = 0;
+            game->ppu.vram[cr_addr + y * 2 + 17] = 0;
+        }
+
+        /* Tile 22: Triangle (Color 4: Red) */
+        uint32_t tr_addr = base + 22 * 32;
+        for (int y = 0; y < 8; y++) {
+            uint8_t row = s_shape_triangle[y];
+            game->ppu.vram[tr_addr + y * 2] = 0;
+            game->ppu.vram[tr_addr + y * 2 + 1] = 0;
+            game->ppu.vram[tr_addr + y * 2 + 16] = row;
+            game->ppu.vram[tr_addr + y * 2 + 17] = 0;
+        }
+
+        /* Setup BG1 Layer (Map Base 0x0400, Chr Base 0x1000) */
+        uint16_t map_base = 0x0400;
+        memset(&game->ppu.vram[map_base], 0, 0x800);
+        mf_ppu_config_bg(&game->ppu, 0, true, 4, map_base, base, false, false);
+        game->ppu.bg[1].enabled = false;
+        game->ppu.bg[2].enabled = false;
+
+        /* Populate Intro Layout */
+        vram_draw_string(game->ppu.vram, map_base, 8, 4, "ELECTRONIC ARTS", 0);
+        vram_draw_string(game->ppu.vram, map_base, 12, 6, "PRESENTS", 0);
+
+        uint32_t addr_sq = map_base + (10 * 32 + 12) * 2;
+        uint32_t addr_cr = map_base + (10 * 32 + 15) * 2;
+        uint32_t addr_tr = map_base + (10 * 32 + 18) * 2;
+        game->ppu.vram[addr_sq] = 20; game->ppu.vram[addr_sq + 1] = 0;
+        game->ppu.vram[addr_cr] = 21; game->ppu.vram[addr_cr + 1] = 0;
+        game->ppu.vram[addr_tr] = 22; game->ppu.vram[addr_tr + 1] = 0;
+
+        vram_draw_string(game->ppu.vram, map_base, 8, 12, "E A   S P O R T S", 0);
+        vram_draw_string(game->ppu.vram, map_base, 6, 15, "\"IF IT'S IN THE GAME,", 0);
+        vram_draw_string(game->ppu.vram, map_base, 7, 17, "IT'S IN THE GAME\"", 0);
+        vram_draw_string(game->ppu.vram, map_base, 10, 22, "PRESS START", 0);
+
+        /* Step 7: Unblank screen and set 120-frame intro duration (~2 seconds) */
+        game->ppu.forced_blank = false;
+        game->ppu.brightness = 0x0F;
+        game->wram[0x0041] = 120;
+        game->wram[0x0042] = 0x00;
+
+        /* Set sub-mode 1: Intro sequence active */
+        game->wram[0x1EF4] = 0x01;
+        game->current_pc = MF_SNES_ADDR_TITLE_SCREEN;
+        game->next_pc = MF_SNES_ADDR_TITLE_SCREEN;
+        game->state = MF_GAME_STATE_TITLE;
+        game->ready_for_jump = true;
+        return;
+    }
+
+    /* Sub-mode 1: Intro Active - Frame Stepping & Controller Polling */
+    uint16_t timer = (uint16_t)(game->wram[0x0041] | (game->wram[0x0042] << 8));
+    bool start_pressed = (game->wram[0x00EC] != 0) || ((game->wram[0x00E5] & 0x10) != 0);
+
+    if (timer > 0 && !start_pressed) {
+        timer--;
+        game->wram[0x0041] = (uint8_t)(timer & 0xFF);
+        game->wram[0x0042] = (uint8_t)(timer >> 8);
+
+        game->current_pc = MF_SNES_ADDR_TITLE_SCREEN;
+        game->next_pc = MF_SNES_ADDR_TITLE_SCREEN;
+        game->state = MF_GAME_STATE_TITLE;
+        game->ready_for_jump = true;
+        return;
+    }
+
+    /* Intro complete or skipped via Start: Advance scene mode to Main Menu ($1EF0 = 0x0002) */
     game->wram[0x1EF0] = 0x02;
     game->wram[0x1EF1] = 0x00;
+    game->wram[0x1EF4] = 0x03;
 
     /* Transition program counter to Mode 2 handler at $C1:5467 */
     game->current_pc = MF_SNES_ADDR_TITLE_SCREEN;
