@@ -47,17 +47,17 @@ void mf_boot_reset(mf_game_t *game) {
 }
 
 /*
- * Subroutine: sub_c0ce46_init_phase6 (Placeholder / Next Target)
- * Bank:       $C0
- * Address:    $C0:CE46
- * File Offset: 0x00CE46
- * Description: Sixth system initialization routine called after sub_c11f04 returns.
+ * Subroutine: sub_c139f3_init_phase7 (Placeholder / Next Target)
+ * Bank:       $C1
+ * Address:    $C1:39F3
+ * File Offset: 0x0139F3
+ * Description: Seventh system initialization routine called after sub_c0ce46 returns.
  */
-void sub_c0ce46_init_phase6(mf_game_t *game) {
+void sub_c139f3_init_phase7(mf_game_t *game) {
     if (!game) return;
     /* Placeholder for next target */
-    game->current_pc = MF_SNES_ADDR_INIT_PHASE6;
-    game->state = MF_GAME_STATE_INIT_PHASE6;
+    game->current_pc = MF_SNES_ADDR_INIT_PHASE7;
+    game->state = MF_GAME_STATE_INIT_PHASE7;
     game->ready_for_jump = false;
 }
 

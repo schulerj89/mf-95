@@ -210,6 +210,53 @@ static bool test_init_phase5_subroutine(void) {
     return true;
 }
 
+static bool test_init_phase6_subroutine(void) {
+    mf_game_t game;
+    mf_game_init(&game);
+    mf_boot_reset(&game);
+    sub_c10000_init_system(&game);
+    sub_c122c0_init_phase2(&game);
+    sub_c11823_init_phase3(&game);
+    sub_c10966_init_phase4(&game);
+    sub_c11f04_init_phase5(&game);
+
+    if (game.state != MF_GAME_STATE_INIT_PHASE6) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE6) return false;
+
+    /* Dirty the memory that sub_c0ce46 clears to verify it clears them */
+    for (int i = 0; i < 8; i++) {
+        game.wram[0x38F1 + i] = 0xAA;
+    }
+    game.wram[0x0002] = 0x55;
+    game.wram[0x0003] = 0x55;
+    game.nmi_enabled = false;
+
+    sub_c0ce46_init_phase6(&game);
+
+    /* Verify DMA tracking table cleared ($7E:38F1 - $7E:38F8) */
+    for (int i = 0; i < 8; i++) {
+        if (game.wram[0x38F1 + i] != 0x00) return false;
+    }
+
+    /* Verify direct page frame counter flag ($02, $03) cleared */
+    if (game.wram[0x0002] != 0x00 || game.wram[0x0003] != 0x00) return false;
+
+    /* Verify hardware V-Blank NMI interrupt enabled ($4200 = 0x80) */
+    if (!game.nmi_enabled) return false;
+
+    /* Verify Phase 5 HDMA tracking and disabled state are intact */
+    if (game.wram[0x050B] != 0xFE || game.wram[0x050C] != 0xFF) return false;
+    if (game.hdma_enabled != false) return false;
+
+    /* Verify return to $C0:CB94 and next target $C1:39F3 (Phase 7) */
+    if (game.current_pc != MF_SNES_ADDR_BOOT_CONT6) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE7) return false;
+    if (!game.ready_for_jump) return false;
+    if (game.state != MF_GAME_STATE_INIT_PHASE7) return false;
+
+    return true;
+}
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -302,9 +349,20 @@ int main(int argc, char **argv) {
         failures++;
     }
 
+    /* 9. Test Subroutine $C0:CE46 (Phase 6 Init) */
+    printf("\n[*] Running System Init Phase 6 Subroutine Self-Test ($C0:CE46)...\n");
+    if (test_init_phase6_subroutine()) {
+        printf("    [PASS] Subroutine $C0:CE46: High WRAM DMA table ($7E:38F1-$7E:38F8) cleared,\n");
+        printf("           direct page flag ($02) cleared, hardware NMI enabled ($4200 = 0x80),\n");
+        printf("           and RTL return to $C0:CB94 verified.\n");
+    } else {
+        printf("    [FAIL] Subroutine $C0:CE46: Phase 6 initialization verification failed.\n");
+        failures++;
+    }
+
     printf("\n----------------------------------------------------\n");
     if (failures == 0) {
-        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966, $C1:1F04)\n");
+        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966, $C1:1F04, $C0:CE46)\n");
         printf("====================================================\n");
         return 0;
     } else {

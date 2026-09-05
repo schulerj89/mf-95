@@ -252,6 +252,59 @@ void sub_c11f04_init_phase5(struct mf_game *game) {
     game->ready_for_jump = true;
 }
 
+/*
+ * Subroutine: sub_c0d00b_clear_dma_table
+ * Bank:       $C0
+ * Address:    $C0:D00B
+ * File Offset: 0x00D00B
+ * Description: Clears DMA channel buffer transfer tracking table entries in
+ *              high work RAM ($7E:38F1-$7E:38F8) to zero.
+ */
+void sub_c0d00b_clear_dma_table(struct mf_game *game) {
+    if (!game) return;
+
+    /* Clears 4 16-bit words (8 bytes) at $7E:38F1 - $7E:38F8 */
+    for (int offset = 0; offset <= 6; offset += 2) {
+        game->wram[0x38F1 + offset] = 0x00;
+        game->wram[0x38F1 + offset + 1] = 0x00;
+    }
+}
+
+/*
+ * Subroutine: sub_c0ce46_init_phase6
+ * Bank:       $C0
+ * Address:    $C0:CE46
+ * File Offset: 0x00CE46
+ * Description: Sixth phase of system initialization called from the cold boot
+ *              dispatcher. Initializes DMA buffer transfer tracking tables in
+ *              high work RAM ($7E:38F1-$7E:38F8), re-executes the HDMA reset
+ *              routine, clears the direct page frame counter flag ($02), enables
+ *              the SNES hardware V-Blank NMI interrupt via $4200, and returns
+ *              via RTL to the boot caller at $C0:CB94.
+ */
+void sub_c0ce46_init_phase6(struct mf_game *game) {
+    if (!game) return;
+
+    /* Clear DMA tracking table in work RAM ($7E:38F1 - $7E:38F8) */
+    sub_c0d00b_clear_dma_table(game);
+
+    /* Re-invoke HDMA reset routine */
+    sub_c11f04_init_phase5(game);
+
+    /* Clear direct page frame counter flag ($02) */
+    game->wram[0x0002] = 0x00;
+    game->wram[0x0003] = 0x00;
+
+    /* Enable hardware V-Blank NMI interrupt ($4200 = 0x80) */
+    game->nmi_enabled = true;
+
+    /* Return via RTL to cold boot caller at $C0:CB94 */
+    game->current_pc = MF_SNES_ADDR_BOOT_CONT6;
+    game->next_pc = MF_SNES_ADDR_INIT_PHASE7;
+    game->state = MF_GAME_STATE_INIT_PHASE7;
+    game->ready_for_jump = true;
+}
+
 
 
 

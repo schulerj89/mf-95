@@ -72,4 +72,28 @@ void sub_c10966_init_phase4(struct mf_game *game);
  */
 void sub_c11f04_init_phase5(struct mf_game *game);
 
+/*
+ * Subroutine: sub_c0d00b_clear_dma_table
+ * Bank:       $C0
+ * Address:    $C0:D00B
+ * File Offset: 0x00D00B
+ * Description: Clears DMA channel buffer transfer tracking table entries in
+ *              high work RAM ($7E:38F1-$7E:38F8) to zero.
+ */
+void sub_c0d00b_clear_dma_table(struct mf_game *game);
+
+/*
+ * Subroutine: sub_c0ce46_init_phase6
+ * Bank:       $C0
+ * Address:    $C0:CE46
+ * File Offset: 0x00CE46
+ * Description: Sixth phase of system initialization called from the cold boot
+ *              dispatcher. Initializes DMA buffer transfer tracking tables in
+ *              high work RAM ($7E:38F1-$7E:38F8), re-executes the HDMA reset
+ *              routine, clears the direct page frame counter flag ($02), enables
+ *              the SNES hardware V-Blank NMI interrupt via $4200, and returns
+ *              via RTL to the boot caller at $C0:CB94.
+ */
+void sub_c0ce46_init_phase6(struct mf_game *game);
+
 #endif /* MF_SYSTEM_H */
