@@ -83,6 +83,32 @@ static bool test_init_system_warm_boot(void) {
     return true;
 }
 
+static bool test_init_phase2_subroutine(void) {
+    mf_game_t game;
+    mf_game_init(&game);
+    mf_boot_reset(&game);
+    sub_c10000_init_system(&game);
+
+    if (game.state != MF_GAME_STATE_INIT_PHASE2) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE2) return false;
+
+    sub_c122c0_init_phase2(&game);
+
+    /* Verify state word 0x4F0C written to $0545 */
+    if (game.wram[0x0545] != 0x0C || game.wram[0x0546] != 0x4F) return false;
+
+    /* Verify mirrored to direct page $DA */
+    if (game.wram[0x00DA] != 0x0C || game.wram[0x00DB] != 0x4F) return false;
+
+    /* Verify return to $C0:CB84 and next target $C1:1823 */
+    if (game.current_pc != MF_SNES_ADDR_BOOT_CONT2) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE3) return false;
+    if (!game.ready_for_jump) return false;
+    if (game.state != MF_GAME_STATE_INIT_PHASE3) return false;
+
+    return true;
+}
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -133,9 +159,19 @@ int main(int argc, char **argv) {
         failures++;
     }
 
+    /* 5. Test Subroutine $C1:22C0 (Phase 2 Init) */
+    printf("\n[*] Running System Init Phase 2 Subroutine Self-Test ($C1:22C0)...\n");
+    if (test_init_phase2_subroutine()) {
+        printf("    [PASS] Subroutine $C1:22C0: State word 0x4F0C written to $0545,\n");
+        printf("           mirrored to direct page $DA, and RTL return to $C0:CB84 verified.\n");
+    } else {
+        printf("    [FAIL] Subroutine $C1:22C0: Phase 2 initialization verification failed.\n");
+        failures++;
+    }
+
     printf("\n----------------------------------------------------\n");
     if (failures == 0) {
-        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000)\n");
+        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0)\n");
         printf("====================================================\n");
         return 0;
     } else {

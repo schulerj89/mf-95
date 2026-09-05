@@ -96,3 +96,33 @@ void sub_c10000_init_system(struct mf_game *game) {
     game->state = MF_GAME_STATE_INIT_PHASE2;
     game->ready_for_jump = true;
 }
+
+/*
+ * Subroutine: sub_c122c0_init_phase2
+ * Bank:       $C1
+ * Address:    $C1:22C0
+ * File Offset: 0x0122C0
+ * Description: Second phase of system initialization called from the cold boot
+ *              dispatcher. Stores the default initial system state word (0x4F0C)
+ *              into work RAM location $0545, mirrors it into direct page variable
+ *              $DA, and returns via RTL to the boot caller at $C0:CB84.
+ */
+void sub_c122c0_init_phase2(struct mf_game *game) {
+    if (!game) return;
+
+    /* Write initial state word 0x4F0C to work RAM $0545 */
+    game->wram[0x0545] = 0x0C;
+    game->wram[0x0546] = 0x4F;
+
+    /* Read back and mirror to direct page variable $DA */
+    uint16_t state_word = (uint16_t)(game->wram[0x0545] | ((uint16_t)game->wram[0x0546] << 8));
+    game->wram[0x00DA] = (uint8_t)(state_word & 0xFF);
+    game->wram[0x00DB] = (uint8_t)(state_word >> 8);
+
+    /* Return via RTL to cold boot caller at $C0:CB84 */
+    game->current_pc = MF_SNES_ADDR_BOOT_CONT2;
+    game->next_pc = MF_SNES_ADDR_INIT_PHASE3;
+    game->state = MF_GAME_STATE_INIT_PHASE3;
+    game->ready_for_jump = true;
+}
+

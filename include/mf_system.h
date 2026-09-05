@@ -20,4 +20,16 @@ struct mf_game;
  */
 void sub_c10000_init_system(struct mf_game *game);
 
+/*
+ * Subroutine: sub_c122c0_init_phase2
+ * Bank:       $C1
+ * Address:    $C1:22C0
+ * File Offset: 0x0122C0
+ * Description: Second phase of system initialization called from the cold boot
+ *              dispatcher. Stores the default initial system state word (0x4F0C)
+ *              into work RAM location $0545, mirrors it into direct page variable
+ *              $DA, and returns via RTL to the boot caller at $C0:CB84.
+ */
+void sub_c122c0_init_phase2(struct mf_game *game);
+
 #endif /* MF_SYSTEM_H */
