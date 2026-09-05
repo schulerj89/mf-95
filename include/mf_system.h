@@ -133,4 +133,28 @@ void sub_c139f3_init_phase7(struct mf_game *game);
  */
 void sub_c122c6_init_phase8(struct mf_game *game);
 
+/*
+ * Subroutine: sub_c1a71b_sync_boot_params
+ * Bank:       $C1
+ * Address:    $C1:A71B
+ * File Offset: 0x01A71B
+ * Description: Copies system configuration parameters ($07AD-$07B5) into secondary
+ *              runtime registers ($07B7-$07BF), mirrors active controller scan parameters
+ *              from ($0653-$0659) into ($07C1-$07C7), and returns via RTL.
+ */
+void sub_c1a71b_sync_boot_params(struct mf_game *game);
+
+/*
+ * Subroutine: sub_c0cb9c_boot_tables
+ * Bank:       $C0
+ * Address:    $C0:CB9C
+ * File Offset: 0x00CB9C
+ * Description: Final phase of cold boot initialization. Transfers player roster
+ *              and controller configuration tables from Bank $C8 into work RAM
+ *              ($064D, $0677, $06FB), initializes game session timing and mode
+ *              registers ($07AD-$07B5), executes parameter synchronization via
+ *              sub_c1a71b, and sets initial game mode ($1EF0 = 0x0001, Title Screen).
+ */
+void sub_c0cb9c_boot_tables(struct mf_game *game);
+
 #endif /* MF_SYSTEM_H */

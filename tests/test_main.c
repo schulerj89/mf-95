@@ -352,6 +352,66 @@ static bool test_init_phase8_subroutine(void) {
     return true;
 }
 
+static bool test_boot_tables_subroutine(void) {
+    mf_game_t game;
+    mf_game_init(&game);
+    mf_boot_reset(&game);
+    sub_c10000_init_system(&game);
+    sub_c122c0_init_phase2(&game);
+    sub_c11823_init_phase3(&game);
+    sub_c10966_init_phase4(&game);
+    sub_c11f04_init_phase5(&game);
+    sub_c0ce46_init_phase6(&game);
+    sub_c139f3_init_phase7(&game);
+    sub_c122c6_init_phase8(&game);
+
+    if (game.state != MF_GAME_STATE_BOOT_TABLES) return false;
+    if (game.next_pc != MF_SNES_ADDR_BOOT_TABLES) return false;
+
+    /* Execute final cold boot sequence phase */
+    sub_c0cb9c_boot_tables(&game);
+
+    /* Verify Table 1 copied into $064D (42 bytes) */
+    if (game.wram[0x064D] != 0xFF || game.wram[0x064D + 41] != 0x00) return false;
+    if (game.wram[0x064D + 18] != 0x21 || game.wram[0x064D + 19] != 0x00) return false;
+
+    /* Verify Table 2 copied into $0677 (132 bytes) */
+    if (game.wram[0x0677] != 0x00 || game.wram[0x0677 + 1] != 0x09) return false;
+    if (game.wram[0x0677 + 131] != 0x19) return false;
+
+    /* Verify Table 3 copied into $06FB (132 bytes) */
+    if (game.wram[0x06FB] != 0x00 || game.wram[0x06FB + 1] != 0x09) return false;
+    if (game.wram[0x06FB + 131] != 0x19) return false;
+
+    /* Verify parameters $07AD-$07B5 initialized */
+    if (game.wram[0x07AD] != 0x00 || game.wram[0x07AE] != 0x00) return false;
+    if (game.wram[0x07B3] != 0x02 || game.wram[0x07B4] != 0x00) return false;
+    if (game.wram[0x07B5] != 0x00 || game.wram[0x07B6] != 0x00) return false;
+    if (game.wram[0x07AF] != 0x07 || game.wram[0x07B0] != 0x00) return false;
+    if (game.wram[0x07B1] != 0x03 || game.wram[0x07B2] != 0x00) return false;
+
+    /* Verify synchronized parameters in $07B7-$07BF match $07AD-$07B5 */
+    for (int i = 0; i < 10; i++) {
+        if (game.wram[0x07B7 + i] != game.wram[0x07AD + i]) return false;
+    }
+
+    /* Verify synchronized controller scan parameters in $07C1-$07C7 match $0653-$0659 */
+    for (int i = 0; i < 8; i++) {
+        if (game.wram[0x07C1 + i] != game.wram[0x0653 + i]) return false;
+    }
+
+    /* Verify initial game mode set to 1 ($1EF0 = 0x0001, Title Screen) */
+    if (game.wram[0x1EF0] != 0x01 || game.wram[0x1EF1] != 0x00) return false;
+
+    /* Verify transition to Title Screen */
+    if (game.current_pc != MF_SNES_ADDR_BOOT_COMPLETE) return false;
+    if (game.next_pc != MF_SNES_ADDR_TITLE_SCREEN) return false;
+    if (!game.ready_for_jump) return false;
+    if (game.state != MF_GAME_STATE_TITLE) return false;
+
+    return true;
+}
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -476,9 +536,20 @@ int main(int argc, char **argv) {
         failures++;
     }
 
+    /* 12. Test Subroutine $C0:CB9C (Boot Tables & Complete) */
+    printf("\n[*] Running Cold Boot Final Tables & Complete Self-Test ($C0:CB9C)...\n");
+    if (test_boot_tables_subroutine()) {
+        printf("    [PASS] Subroutine $C0:CB9C: Bank $C8 tables copied to $064D, $0677, $06FB,\n");
+        printf("           parameters synchronized via sub_c1a71b, and transition to\n");
+        printf("           Title Screen mode ($1EF0 = 0x0001, $C1:4DE2) verified.\n");
+    } else {
+        printf("    [FAIL] Subroutine $C0:CB9C: Cold boot finalization failed.\n");
+        failures++;
+    }
+
     printf("\n----------------------------------------------------\n");
     if (failures == 0) {
-        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966, $C1:1F04, $C0:CE46, $C1:39F3, $C1:22C6)\n");
+        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966, $C1:1F04, $C0:CE46, $C1:39F3, $C1:22C6, $C0:CB9C)\n");
         printf("====================================================\n");
         return 0;
     } else {

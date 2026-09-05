@@ -25,6 +25,8 @@
 #define MF_SNES_ADDR_INIT_PHASE8   0xC122C6
 #define MF_SNES_ADDR_BOOT_CONT8    0xC0CB9C
 #define MF_SNES_ADDR_BOOT_TABLES   0xC0CB9C
+#define MF_SNES_ADDR_BOOT_COMPLETE 0xC0CBDE
+#define MF_SNES_ADDR_TITLE_SCREEN  0xC14DE2
 
 #define MF_SNES_FILE_OFFSET_RESET_VECTOR  0x00CB63
 #define MF_SNES_FILE_OFFSET_BOOT_ENTRY    0x00CB6F
@@ -45,6 +47,8 @@
 #define MF_SNES_FILE_OFFSET_INIT_PHASE8   0x0122C6
 #define MF_SNES_FILE_OFFSET_BOOT_CONT8    0x00CB9C
 #define MF_SNES_FILE_OFFSET_BOOT_TABLES   0x00CB9C
+#define MF_SNES_FILE_OFFSET_BOOT_COMPLETE 0x00CBDE
+#define MF_SNES_FILE_OFFSET_TITLE_SCREEN  0x014DE2
 
 #define MF_WRAM_SIZE 0x20000 /* 128 KiB SNES Work RAM */
 #define MF_SRAM_SIZE 0x2000  /* 8 KiB SNES Battery-Backed Save RAM ($30:6000-$7FFF) */
@@ -103,12 +107,12 @@ void mf_game_init(mf_game_t *game);
 void mf_boot_reset(mf_game_t *game);
 
 /*
- * Subroutine: sub_c0cb9c_boot_tables (Placeholder / Next Target)
- * Bank:       $C0
- * Address:    $C0:CB9C
- * File Offset: 0x00CB9C
- * Description: Cold boot table transfer and final system initialization routine.
+ * Subroutine: sub_c14de2_title_screen (Placeholder / Next Target)
+ * Bank:       $C1
+ * Address:    $C1:4DE2
+ * File Offset: 0x014DE2
+ * Description: Main game mode 1 handler: Title sequence and intro screens.
  */
-void sub_c0cb9c_boot_tables(mf_game_t *game);
+void sub_c14de2_title_screen(mf_game_t *game);
 
 #endif /* MF_GAME_H */

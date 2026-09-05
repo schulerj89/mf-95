@@ -412,6 +412,107 @@ void sub_c122c6_init_phase8(struct mf_game *game) {
     game->ready_for_jump = true;
 }
 
+/*
+ * Subroutine: sub_c1a71b_sync_boot_params
+ * Bank:       $C1
+ * Address:    $C1:A71B
+ * File Offset: 0x01A71B
+ * Description: Copies system configuration parameters ($07AD-$07B5) into secondary
+ *              runtime registers ($07B7-$07BF), mirrors active controller scan parameters
+ *              from ($0653-$0659) into ($07C1-$07C7), and returns via RTL.
+ */
+void sub_c1a71b_sync_boot_params(struct mf_game *game) {
+    if (!game) return;
+
+    /* Copy 5 16-bit words (10 bytes) from $07AD-$07B5 to $07B7-$07BF */
+    for (int offset = 0; offset <= 8; offset += 2) {
+        game->wram[0x07B7 + offset] = game->wram[0x07AD + offset];
+        game->wram[0x07B7 + offset + 1] = game->wram[0x07AD + offset + 1];
+    }
+
+    /* Copy 4 16-bit words (8 bytes) from $0653-$0659 to $07C1-$07C7 */
+    for (int offset = 0; offset <= 6; offset += 2) {
+        game->wram[0x07C1 + offset] = game->wram[0x0653 + offset];
+        game->wram[0x07C1 + offset + 1] = game->wram[0x0653 + offset + 1];
+    }
+}
+
+/*
+ * Subroutine: sub_c0cb9c_boot_tables
+ * Bank:       $C0
+ * Address:    $C0:CB9C
+ * File Offset: 0x00CB9C
+ * Description: Final phase of cold boot initialization. Transfers player roster
+ *              and controller configuration tables from Bank $C8 into work RAM
+ *              ($064D, $0677, $06FB), initializes game session timing and mode
+ *              registers ($07AD-$07B5), executes parameter synchronization via
+ *              sub_c1a71b, and sets initial game mode ($1EF0 = 0x0001, Title Screen).
+ */
+void sub_c0cb9c_boot_tables(struct mf_game *game) {
+    if (!game) return;
+
+    /* Initial controller mapping table from Bank $C8:2C8B (42 bytes) */
+    static const uint8_t s_boot_table1[42] = {
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00,
+        0x21, 0x00, 0x1C, 0x00, 0x36, 0x00, 0x03, 0x00, 0x2C, 0x00, 0x41, 0x00,
+        0x21, 0x00, 0x1C, 0x00, 0x36, 0x00, 0x03, 0x00, 0x2C, 0x00, 0x41, 0x00
+    };
+
+    /* Initial roster/role table from Bank $C8:2BD0 (132 bytes) */
+    static const uint8_t s_boot_table2[132] = {
+        0x00, 0x09, 0x08, 0x03, 0x06, 0x0E, 0x11, 0x12, 0x13, 0x14, 0x15,
+        0x00, 0x09, 0x08, 0x03, 0x06, 0x0E, 0x11, 0x12, 0x13, 0x14, 0x15,
+        0x00, 0x09, 0x08, 0x0F, 0x03, 0x0E, 0x11, 0x12, 0x13, 0x14, 0x15,
+        0x00, 0x09, 0x08, 0x0B, 0x03, 0x0A, 0x11, 0x12, 0x13, 0x14, 0x15,
+        0x00, 0x09, 0x08, 0x03, 0x06, 0x0E, 0x11, 0x12, 0x13, 0x14, 0x15,
+        0x00, 0x09, 0x08, 0x0A, 0x03, 0x0E, 0x11, 0x12, 0x13, 0x14, 0x15,
+        0x00, 0x0F, 0x08, 0x03, 0x06, 0x0E, 0x11, 0x12, 0x13, 0x14, 0x15,
+        0x21, 0x20, 0x22, 0x1F, 0x28, 0x2A, 0x2B, 0x26, 0x1C, 0x1B, 0x19,
+        0x21, 0x22, 0x1F, 0x28, 0x2A, 0x2B, 0x26, 0x1C, 0x1B, 0x1A, 0x19,
+        0x21, 0x1F, 0x28, 0x2A, 0x2C, 0x2B, 0x26, 0x1C, 0x1B, 0x1A, 0x19,
+        0x21, 0x28, 0x29, 0x2A, 0x2B, 0x2D, 0x26, 0x1C, 0x1B, 0x1A, 0x19,
+        0x2A, 0x22, 0x1F, 0x28, 0x21, 0x26, 0x1C, 0x1B, 0x20, 0x1A, 0x19
+    };
+
+    /* Transfer Table 1 (42 bytes) to $064D */
+    memcpy(&game->wram[0x064D], s_boot_table1, sizeof(s_boot_table1));
+
+    /* Transfer Table 2 (132 bytes) to $0677 */
+    memcpy(&game->wram[0x0677], s_boot_table2, sizeof(s_boot_table2));
+
+    /* Transfer Table 3 (132 bytes) to $06FB */
+    memcpy(&game->wram[0x06FB], s_boot_table2, sizeof(s_boot_table2));
+
+    /* Initialize session parameters */
+    game->wram[0x07AD] = 0x00;
+    game->wram[0x07AE] = 0x00;
+
+    game->wram[0x07B3] = 0x02;
+    game->wram[0x07B4] = 0x00;
+
+    game->wram[0x07B5] = 0x00;
+    game->wram[0x07B6] = 0x00;
+
+    game->wram[0x07AF] = 0x07;
+    game->wram[0x07B0] = 0x00;
+
+    game->wram[0x07B1] = 0x03;
+    game->wram[0x07B2] = 0x00;
+
+    /* Synchronize runtime parameters via sub_c1a71b */
+    sub_c1a71b_sync_boot_params(game);
+
+    /* Cold boot complete: set initial game mode ($1EF0 = 0x0001, Title Screen) */
+    game->wram[0x1EF0] = 0x01;
+    game->wram[0x1EF1] = 0x00;
+
+    /* Transition program counter out of cold boot into Main Game Loop (Title Screen) */
+    game->current_pc = MF_SNES_ADDR_BOOT_COMPLETE;
+    game->next_pc = MF_SNES_ADDR_TITLE_SCREEN;
+    game->state = MF_GAME_STATE_TITLE;
+    game->ready_for_jump = true;
+}
+
 
 
 

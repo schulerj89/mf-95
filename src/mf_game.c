@@ -47,17 +47,17 @@ void mf_boot_reset(mf_game_t *game) {
 }
 
 /*
- * Subroutine: sub_c0cb9c_boot_tables (Placeholder / Next Target)
- * Bank:       $C0
- * Address:    $C0:CB9C
- * File Offset: 0x00CB9C
- * Description: Cold boot table transfer and final system initialization routine.
+ * Subroutine: sub_c14de2_title_screen (Placeholder / Next Target)
+ * Bank:       $C1
+ * Address:    $C1:4DE2
+ * File Offset: 0x014DE2
+ * Description: Main game mode 1 handler: Title sequence and intro screens.
  */
-void sub_c0cb9c_boot_tables(mf_game_t *game) {
+void sub_c14de2_title_screen(mf_game_t *game) {
     if (!game) return;
     /* Placeholder for next target */
-    game->current_pc = MF_SNES_ADDR_BOOT_TABLES;
-    game->state = MF_GAME_STATE_BOOT_TABLES;
+    game->current_pc = MF_SNES_ADDR_TITLE_SCREEN;
+    game->state = MF_GAME_STATE_TITLE;
     game->ready_for_jump = false;
 }
 
