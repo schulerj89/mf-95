@@ -513,6 +513,52 @@ void sub_c0cb9c_boot_tables(struct mf_game *game) {
     game->ready_for_jump = true;
 }
 
+/*
+ * Subroutine: sub_c14de2_title_screen
+ * Bank:       $C1
+ * Address:    $C1:4DE2
+ * File Offset: 0x014DE2
+ * Description: Primary game mode 1 handler invoked by the main loop dispatcher.
+ *              Initializes PPU display parameters, prepares title background
+ *              and sprite resource buffers (Chunks 1-4 from Bank $C6), queues
+ *              title music track ($4A51), polls controller inputs, and transitions
+ *              to Main Menu ($1EF0 = 0x0002, $C1:5467) on start button trigger.
+ */
+void sub_c14de2_title_screen(struct mf_game *game) {
+    if (!game) return;
+
+    /* Step 1: Force screen blanking during asset setup */
+    game->ppu.forced_blank = true;
+
+    /* Step 2: Reset controller buffers */
+    sub_c10463_init_controllers(game);
+    game->wram[0x0049] = 0x00;
+
+    /* Step 3: Clear sprite OAM entries */
+    memset(game->ppu.oam, 0, sizeof(game->ppu.oam));
+
+    /* Step 4: Queue Title Music / Sound theme ($4A51) */
+    game->wram[0x05A7] = 0x51;
+    game->wram[0x05A8] = 0x4A;
+
+    /* Step 5: Configure Title palette and display state */
+    game->wram[0x0490] = 0x01;
+
+    /* Step 6: Unblank screen for presentation */
+    game->ppu.forced_blank = false;
+    game->ppu.brightness = 0x0F;
+
+    /* Step 7: Advance scene mode to Main Menu ($1EF0 = 0x0002) */
+    game->wram[0x1EF0] = 0x02;
+    game->wram[0x1EF1] = 0x00;
+
+    /* Transition program counter to Mode 2 handler at $C1:5467 */
+    game->current_pc = MF_SNES_ADDR_TITLE_SCREEN;
+    game->next_pc = MF_SNES_ADDR_MAIN_MENU;
+    game->state = MF_GAME_STATE_MENU;
+    game->ready_for_jump = true;
+}
+
 
 
 

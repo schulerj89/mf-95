@@ -47,17 +47,17 @@ void mf_boot_reset(mf_game_t *game) {
 }
 
 /*
- * Subroutine: sub_c14de2_title_screen (Placeholder / Next Target)
+ * Subroutine: sub_c15467_main_menu (Placeholder / Next Target)
  * Bank:       $C1
- * Address:    $C1:4DE2
- * File Offset: 0x014DE2
- * Description: Main game mode 1 handler: Title sequence and intro screens.
+ * Address:    $C1:5467
+ * File Offset: 0x015467
+ * Description: Primary game mode 2 handler: Main menu and game mode selection.
  */
-void sub_c14de2_title_screen(mf_game_t *game) {
+void sub_c15467_main_menu(mf_game_t *game) {
     if (!game) return;
     /* Placeholder for next target */
-    game->current_pc = MF_SNES_ADDR_TITLE_SCREEN;
-    game->state = MF_GAME_STATE_TITLE;
+    game->current_pc = MF_SNES_ADDR_MAIN_MENU;
+    game->state = MF_GAME_STATE_MENU;
     game->ready_for_jump = false;
 }
 

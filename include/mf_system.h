@@ -157,4 +157,17 @@ void sub_c1a71b_sync_boot_params(struct mf_game *game);
  */
 void sub_c0cb9c_boot_tables(struct mf_game *game);
 
+/*
+ * Subroutine: sub_c14de2_title_screen
+ * Bank:       $C1
+ * Address:    $C1:4DE2
+ * File Offset: 0x014DE2
+ * Description: Primary game mode 1 handler invoked by the main loop dispatcher.
+ *              Initializes PPU display parameters, prepares title background
+ *              and sprite resource buffers (Chunks 1-4 from Bank $C6), queues
+ *              title music track ($4A51), polls controller inputs, and transitions
+ *              to Main Menu ($1EF0 = 0x0002, $C1:5467) on start button trigger.
+ */
+void sub_c14de2_title_screen(struct mf_game *game);
+
 #endif /* MF_SYSTEM_H */

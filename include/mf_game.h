@@ -27,6 +27,7 @@
 #define MF_SNES_ADDR_BOOT_TABLES   0xC0CB9C
 #define MF_SNES_ADDR_BOOT_COMPLETE 0xC0CBDE
 #define MF_SNES_ADDR_TITLE_SCREEN  0xC14DE2
+#define MF_SNES_ADDR_MAIN_MENU     0xC15467
 
 #define MF_SNES_FILE_OFFSET_RESET_VECTOR  0x00CB63
 #define MF_SNES_FILE_OFFSET_BOOT_ENTRY    0x00CB6F
@@ -49,6 +50,7 @@
 #define MF_SNES_FILE_OFFSET_BOOT_TABLES   0x00CB9C
 #define MF_SNES_FILE_OFFSET_BOOT_COMPLETE 0x00CBDE
 #define MF_SNES_FILE_OFFSET_TITLE_SCREEN  0x014DE2
+#define MF_SNES_FILE_OFFSET_MAIN_MENU     0x015467
 
 #define MF_WRAM_SIZE 0x20000 /* 128 KiB SNES Work RAM */
 #define MF_SRAM_SIZE 0x2000  /* 8 KiB SNES Battery-Backed Save RAM ($30:6000-$7FFF) */
@@ -107,12 +109,12 @@ void mf_game_init(mf_game_t *game);
 void mf_boot_reset(mf_game_t *game);
 
 /*
- * Subroutine: sub_c14de2_title_screen (Placeholder / Next Target)
+ * Subroutine: sub_c15467_main_menu (Placeholder / Next Target)
  * Bank:       $C1
- * Address:    $C1:4DE2
- * File Offset: 0x014DE2
- * Description: Main game mode 1 handler: Title sequence and intro screens.
+ * Address:    $C1:5467
+ * File Offset: 0x015467
+ * Description: Primary game mode 2 handler: Main menu and game mode selection.
  */
-void sub_c14de2_title_screen(mf_game_t *game);
+void sub_c15467_main_menu(mf_game_t *game);
 
 #endif /* MF_GAME_H */
