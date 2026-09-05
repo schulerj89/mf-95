@@ -305,6 +305,89 @@ void sub_c0ce46_init_phase6(struct mf_game *game) {
     game->ready_for_jump = true;
 }
 
+/*
+ * Subroutine: sub_c10463_init_controllers
+ * Bank:       $C1
+ * Address:    $C1:0463
+ * File Offset: 0x010463
+ * Description: Resets controller state variables. Configures default input mode
+ *              word ($0547 = 0x3000), clears input state registers ($0468-$0471),
+ *              clears per-player controller buffers ($0549-$0570), sets active
+ *              controller count flag ($0571 = 0x000B), and returns via RTL.
+ */
+void sub_c10463_init_controllers(struct mf_game *game) {
+    if (!game) return;
+
+    /* Set default input mode word ($0547 = 0x3000) */
+    game->wram[0x0547] = 0x00;
+    game->wram[0x0548] = 0x30;
+
+    /* Clear controller status registers ($0468-$0471, 5 words / 10 bytes) */
+    for (int offset = 0; offset <= 8; offset += 2) {
+        game->wram[0x0468 + offset] = 0x00;
+        game->wram[0x0468 + offset + 1] = 0x00;
+    }
+
+    /* Clear controller buffers ($0549-$0570, 20 words / 40 bytes) */
+    for (uint32_t addr = 0x0549; addr < 0x0571; addr++) {
+        game->wram[addr] = 0x00;
+    }
+
+    /* Set controller count / configuration mask ($0571 = 0x000B) */
+    game->wram[0x0571] = 0x0B;
+    game->wram[0x0572] = 0x00;
+}
+
+/*
+ * Subroutine: sub_c139f3_init_phase7
+ * Bank:       $C1
+ * Address:    $C1:39F3
+ * File Offset: 0x0139F3
+ * Description: Seventh phase of system initialization called from the cold boot
+ *              dispatcher. Tests battery-backed SRAM presence, flags SRAM validity
+ *              in work RAM ($057B = 0xFFFF), initializes controller state buffers
+ *              via sub_c10463, verifies and formats the persistent battery SRAM
+ *              "JOHN" header signature, and returns via RTL to the boot caller at $C0:CB98.
+ */
+void sub_c139f3_init_phase7(struct mf_game *game) {
+    if (!game) return;
+
+    /* Set SRAM presence flag ($057B = 0xFFFF) */
+    game->wram[0x057B] = 0xFF;
+    game->wram[0x057C] = 0xFF;
+
+    /* Reset controller state variables */
+    sub_c10463_init_controllers(game);
+
+    /* Validate or initialize battery SRAM signature ("JOHN") */
+    if (game->sram[0x0000] != 0x4A || game->sram[0x0001] != 0x4F ||
+        game->sram[0x0002] != 0x48 || game->sram[0x0003] != 0x4E) {
+        /* Write primary "JOHN" signature */
+        game->sram[0x0000] = 0x4A; /* 'J' */
+        game->sram[0x0001] = 0x4F; /* 'O' */
+        game->sram[0x0002] = 0x48; /* 'H' */
+        game->sram[0x0003] = 0x4E; /* 'N' */
+
+        /* Write mirror signature at 0x03FE */
+        game->sram[0x03FE] = 0x4A;
+        game->sram[0x03FF] = 0x4F;
+        game->sram[0x0400] = 0x48;
+        game->sram[0x0401] = 0x4E;
+
+        /* Write mirror signature at 0x1FEA */
+        game->sram[0x1FEA] = 0x4A;
+        game->sram[0x1FEB] = 0x4F;
+        game->sram[0x1FEC] = 0x48;
+        game->sram[0x1FED] = 0x4E;
+    }
+
+    /* Return via RTL to cold boot caller at $C0:CB98 */
+    game->current_pc = MF_SNES_ADDR_BOOT_CONT7;
+    game->next_pc = MF_SNES_ADDR_INIT_PHASE8;
+    game->state = MF_GAME_STATE_INIT_PHASE8;
+    game->ready_for_jump = true;
+}
+
 
 
 

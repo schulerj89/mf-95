@@ -96,4 +96,29 @@ void sub_c0d00b_clear_dma_table(struct mf_game *game);
  */
 void sub_c0ce46_init_phase6(struct mf_game *game);
 
+/*
+ * Subroutine: sub_c10463_init_controllers
+ * Bank:       $C1
+ * Address:    $C1:0463
+ * File Offset: 0x010463
+ * Description: Resets controller state variables. Configures default input mode
+ *              word ($0547 = 0x3000), clears input state registers ($0468-$0471),
+ *              clears per-player controller buffers ($0549-$0570), sets active
+ *              controller count flag ($0571 = 0x000B), and returns via RTL.
+ */
+void sub_c10463_init_controllers(struct mf_game *game);
+
+/*
+ * Subroutine: sub_c139f3_init_phase7
+ * Bank:       $C1
+ * Address:    $C1:39F3
+ * File Offset: 0x0139F3
+ * Description: Seventh phase of system initialization called from the cold boot
+ *              dispatcher. Tests battery-backed SRAM presence, flags SRAM validity
+ *              in work RAM ($057B = 0xFFFF), initializes controller state buffers
+ *              via sub_c10463, verifies and formats the persistent battery SRAM
+ *              "JOHN" header signature, and returns via RTL to the boot caller at $C0:CB98.
+ */
+void sub_c139f3_init_phase7(struct mf_game *game);
+
 #endif /* MF_SYSTEM_H */

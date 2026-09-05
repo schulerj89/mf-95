@@ -257,6 +257,66 @@ static bool test_init_phase6_subroutine(void) {
     return true;
 }
 
+static bool test_init_phase7_subroutine(void) {
+    mf_game_t game;
+    mf_game_init(&game);
+    mf_boot_reset(&game);
+    sub_c10000_init_system(&game);
+    sub_c122c0_init_phase2(&game);
+    sub_c11823_init_phase3(&game);
+    sub_c10966_init_phase4(&game);
+    sub_c11f04_init_phase5(&game);
+    sub_c0ce46_init_phase6(&game);
+
+    if (game.state != MF_GAME_STATE_INIT_PHASE7) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE7) return false;
+
+    /* Dirty controller memory and SRAM to verify formatting */
+    game.wram[0x0547] = 0xAA;
+    game.wram[0x0548] = 0x55;
+    game.wram[0x0571] = 0x00;
+    memset(game.sram, 0, sizeof(game.sram));
+
+    sub_c139f3_init_phase7(&game);
+
+    /* Verify SRAM presence word ($057B = 0xFFFF) */
+    if (game.wram[0x057B] != 0xFF || game.wram[0x057C] != 0xFF) return false;
+
+    /* Verify controller config word ($0547 = 0x3000) */
+    if (game.wram[0x0547] != 0x00 || game.wram[0x0548] != 0x30) return false;
+
+    /* Verify controller status words cleared ($0468-$0471) */
+    for (int offset = 0; offset <= 8; offset += 2) {
+        if (game.wram[0x0468 + offset] != 0x00 || game.wram[0x0468 + offset + 1] != 0x00) return false;
+    }
+
+    /* Verify controller buffers cleared ($0549-$0570) */
+    for (uint32_t addr = 0x0549; addr < 0x0571; addr++) {
+        if (game.wram[addr] != 0x00) return false;
+    }
+
+    /* Verify controller count ($0571 = 0x000B) */
+    if (game.wram[0x0571] != 0x0B || game.wram[0x0572] != 0x00) return false;
+
+    /* Verify battery SRAM header signature "JOHN" formatted */
+    if (game.sram[0x0000] != 'J' || game.sram[0x0001] != 'O' ||
+        game.sram[0x0002] != 'H' || game.sram[0x0003] != 'N') return false;
+
+    /* Verify mirror signatures */
+    if (game.sram[0x03FE] != 'J' || game.sram[0x03FF] != 'O' ||
+        game.sram[0x0400] != 'H' || game.sram[0x0401] != 'N') return false;
+    if (game.sram[0x1FEA] != 'J' || game.sram[0x1FEB] != 'O' ||
+        game.sram[0x1FEC] != 'H' || game.sram[0x1FED] != 'N') return false;
+
+    /* Verify return to $C0:CB98 and next target $C1:22C6 (Phase 8) */
+    if (game.current_pc != MF_SNES_ADDR_BOOT_CONT7) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE8) return false;
+    if (!game.ready_for_jump) return false;
+    if (game.state != MF_GAME_STATE_INIT_PHASE8) return false;
+
+    return true;
+}
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -360,9 +420,20 @@ int main(int argc, char **argv) {
         failures++;
     }
 
+    /* 10. Test Subroutine $C1:39F3 (Phase 7 Init) */
+    printf("\n[*] Running System Init Phase 7 Subroutine Self-Test ($C1:39F3)...\n");
+    if (test_init_phase7_subroutine()) {
+        printf("    [PASS] Subroutine $C1:39F3: SRAM flag ($057B = 0xFFFF) set, controller\n");
+        printf("           buffers initialized, battery SRAM signature formatted ('JOHN'),\n");
+        printf("           and RTL return to $C0:CB98 verified.\n");
+    } else {
+        printf("    [FAIL] Subroutine $C1:39F3: Phase 7 initialization verification failed.\n");
+        failures++;
+    }
+
     printf("\n----------------------------------------------------\n");
     if (failures == 0) {
-        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966, $C1:1F04, $C0:CE46)\n");
+        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966, $C1:1F04, $C0:CE46, $C1:39F3)\n");
         printf("====================================================\n");
         return 0;
     } else {
