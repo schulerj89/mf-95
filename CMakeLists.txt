@@ -31,7 +31,17 @@ if(WIN32)
 endif()
 
 # Test runner
-add_executable(mf95_tests tests/test_main.c)
+set(MF95_TEST_SOURCES
+    tests/test_common.h
+    tests/test_ppu.c
+    tests/test_audio.c
+    tests/test_assets.c
+    tests/test_boot.c
+    tests/test_scenes.c
+    tests/test_main.c
+)
+add_executable(mf95_tests ${MF95_TEST_SOURCES})
+target_include_directories(mf95_tests PRIVATE tests)
 target_link_libraries(mf95_tests mf95_core)
 
 if(MSVC)
@@ -42,3 +52,4 @@ else()
     target_compile_options(mf95_tests PRIVATE -Wall -Wextra)
     target_link_libraries(mf95_tests m)
 endif()
+

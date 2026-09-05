@@ -34,21 +34,25 @@ $TestExePath = if ([string]::IsNullOrWhiteSpace($OutputExe)) {
 }
 
 $IncludePath = Join-Path $Root "include"
+$TestIncludePath = Join-Path $Root "tests"
 $SrcPpu = Join-Path $Root "src\mf_ppu.c"
 $SrcAudio = Join-Path $Root "src\mf_audio.c"
 $SrcAssets = Join-Path $Root "src\mf_assets.c"
 $SrcSystem = Join-Path $Root "src\mf_system.c"
 $SrcGame = Join-Path $Root "src\mf_game.c"
-$SrcTest = Join-Path $Root "tests\test_main.c"
+
+$TestSources = Get-ChildItem (Join-Path $Root "tests\*.c") | ForEach-Object { "`"$($_.FullName)`"" }
+$TestSourcesStr = $TestSources -join " "
 
 $CompileScript = Join-Path $BuildDir "compile.bat"
 $CompileBatchContent = @"
 @echo off
 call "$VcVars" > nul
-echo Compiling mf95_tests.exe (PPU + Audio + Assets + System + Game)...
-cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /Fe"$TestExePath" /Fo"$ObjDir\\" "$SrcPpu" "$SrcAudio" "$SrcAssets" "$SrcSystem" "$SrcGame" "$SrcTest" winmm.lib
+echo Compiling mf95_tests.exe (Modular Subsystem Tests: PPU + Audio + Assets + Boot + Scenes)...
+cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /I "$TestIncludePath" /Fe"$TestExePath" /Fo"$ObjDir\\" "$SrcPpu" "$SrcAudio" "$SrcAssets" "$SrcSystem" "$SrcGame" $TestSourcesStr winmm.lib
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 "@
+
 
 Set-Content -Path $CompileScript -Value $CompileBatchContent -Encoding ASCII
 Write-Host "Building mf95 test executable..." -ForegroundColor Cyan
