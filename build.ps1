@@ -54,9 +54,10 @@ echo Compiling mf95_tests.exe (Modular Subsystem Tests: PPU + Audio + Assets + B
 cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /I "$TestIncludePath" /Fe"$TestExePath" /Fo"$ObjDir\\" "$SrcPpu" "$SrcAudio" "$SrcAssets" "$SrcSystem" "$SrcGame" $TestSourcesStr winmm.lib
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 
-echo Compiling mf95.exe (Interactive Win32 Application)...
-cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /Fe"$GameExePath" /Fo"$ObjDir\\" "$SrcMain" "$SrcPpu" "$SrcAudio" "$SrcAssets" "$SrcSystem" "$SrcGame" user32.lib gdi32.lib winmm.lib /link /SUBSYSTEM:WINDOWS
+echo Compiling mf95.exe (Interactive Application with CLI Console)...
+cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /Fe"$GameExePath" /Fo"$ObjDir\\" "$SrcMain" "$SrcPpu" "$SrcAudio" "$SrcAssets" "$SrcSystem" "$SrcGame" user32.lib gdi32.lib winmm.lib /link /SUBSYSTEM:CONSOLE
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
 "@
 
 

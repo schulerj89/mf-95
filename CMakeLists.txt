@@ -44,9 +44,10 @@ add_executable(mf95_tests ${MF95_TEST_SOURCES})
 target_include_directories(mf95_tests PRIVATE tests)
 target_link_libraries(mf95_tests mf95_core)
 
-# Interactive application executable
-add_executable(mf95 WIN32 src/main.c)
+# Interactive application executable with CLI console
+add_executable(mf95 src/main.c)
 target_link_libraries(mf95 mf95_core)
+
 if(WIN32)
     target_link_libraries(mf95 user32 gdi32 winmm)
 endif()
