@@ -21,6 +21,19 @@ struct mf_game;
 void sub_c10000_init_system(struct mf_game *game);
 
 /*
+ * Subroutine: sub_c101d7_load_ppu_table
+ * Bank:       $C1
+ * Address:    $C1:01D7
+ * File Offset: 0x0101D7
+ * Description: Core PPU display register setup subroutine. Parses 32-byte PPU hardware
+ *              descriptor tables, writes display control registers into WRAM mirrors
+ *              and hardware registers ($2105 BGMODE, $2107 BG1SC, $2108 BG2SC, $2109 BG3SC,
+ *              $210B BG12NBA, $210C BG34NBA), enables background layers on main and sub
+ *              screens ($212C, $212D), and configures PPU layer geometry in mf_ppu_t.
+ */
+void sub_c101d7_load_ppu_table(struct mf_game *game, const uint8_t *table);
+
+/*
  * Subroutine: sub_c122c0_init_phase2
  * Bank:       $C1
  * Address:    $C1:22C0

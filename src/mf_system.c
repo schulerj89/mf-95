@@ -99,6 +99,84 @@ void sub_c10000_init_system(struct mf_game *game) {
 }
 
 /*
+ * Subroutine: sub_c101d7_load_ppu_table
+ * Bank:       $C1
+ * Address:    $C1:01D7
+ * File Offset: 0x0101D7
+ * Description: Core PPU display register setup subroutine. Parses 32-byte PPU hardware
+ *              descriptor tables, writes display control registers into WRAM mirrors
+ *              and hardware registers ($2105 BGMODE, $2107 BG1SC, $2108 BG2SC, $2109 BG3SC,
+ *              $210B BG12NBA, $210C BG34NBA), enables background layers on main and sub
+ *              screens ($212C, $212D), and configures PPU layer geometry in mf_ppu_t.
+ */
+void sub_c101d7_load_ppu_table(struct mf_game *game, const uint8_t *table) {
+    if (!game || !table) return;
+
+    /* Offset 0: BGMODE ($2105) and mirror $0492 */
+    uint8_t bgmode = table[0];
+    game->wram[0x0492] = bgmode;
+    game->ppu.bg3_priority_high = (bgmode & 0x08) != 0;
+
+    /* Offset 1: M7SEL ($211A) and mirror $049E */
+    game->wram[0x049E] = table[1];
+    game->wram[0x049F] = 0x00;
+
+    /* Offset 2-3: Mirrors $1E3A, $1E3B */
+    game->wram[0x1E3A] = table[2];
+    game->wram[0x1E3B] = table[3];
+
+    /* Offset 6: BG1SC ($2107) - BG1 Tilemap Base Address & Size */
+    uint8_t bg1sc = table[6];
+    game->wram[0x1E3E] = table[7];
+    game->wram[0x1E3F] = table[8];
+    uint16_t bg1_map = (uint16_t)((bg1sc & 0xFC) << 8);
+    if (bg1_map == 0 && bg1sc != 0) {
+        bg1_map = 0x0400;
+    }
+    bool bg1_wide = (bg1sc & 0x01) != 0;
+    bool bg1_tall = (bg1sc & 0x02) != 0;
+
+    /* Offset 9: BG2SC ($2108) - BG2 Tilemap Base Address & Size */
+    uint8_t bg2sc = table[9];
+    game->wram[0x1E42] = table[10];
+    game->wram[0x1E43] = table[11];
+    uint16_t bg2_map = (uint16_t)((bg2sc & 0xFC) << 8);
+    if (bg2_map == 0 && bg2sc != 0) {
+        bg2_map = 0x0800;
+    }
+    bool bg2_wide = (bg2sc & 0x01) != 0;
+    bool bg2_tall = (bg2sc & 0x02) != 0;
+
+    /* Offset 12: BG3SC ($2109) - BG3 Tilemap Base Address */
+    uint8_t bg3sc = table[12];
+    uint16_t bg3_map = (uint16_t)((bg3sc & 0xFC) << 8);
+
+    /* Offset 15: BG12NBA ($210B) - BG1 and BG2 Character / Tile Base */
+    uint8_t bg12nba = table[15];
+    game->wram[0x1C70] = bg12nba;
+    game->wram[0x1E3D] = (uint8_t)(bg12nba & 0xF0);
+    uint16_t bg1_chr = (uint16_t)((bg12nba & 0x0F) << 12);
+    uint16_t bg2_chr = (uint16_t)(((bg12nba >> 4) & 0x0F) << 12);
+    if (bg1_chr == 0 && bg12nba == 0x10) bg1_chr = 0x1000;
+    if (bg2_chr == 0 && bg12nba == 0x10) bg2_chr = 0x1000;
+
+    /* Offset 17: BG34NBA ($210C) - BG3 and BG4 Character / Tile Base */
+    uint8_t bg34nba = table[17];
+    game->wram[0x1C72] = bg34nba;
+    game->wram[0x1E41] = (uint8_t)(bg34nba & 0xF0);
+    uint16_t bg3_chr = (uint16_t)((bg34nba & 0x0F) << 12);
+
+    /* Configure PPU background layers */
+    mf_ppu_config_bg(&game->ppu, 0, true, 4, bg1_map ? bg1_map : 0x0400, bg1_chr ? bg1_chr : 0x1000, bg1_wide, bg1_tall);
+    mf_ppu_config_bg(&game->ppu, 1, true, 4, bg2_map ? bg2_map : 0x0800, bg2_chr ? bg2_chr : 0x1000, bg2_wide, bg2_tall);
+    if (bg3sc != 0xFF) {
+        mf_ppu_config_bg(&game->ppu, 2, true, 2, bg3_map, bg3_chr, false, false);
+    } else {
+        game->ppu.bg[2].enabled = false;
+    }
+}
+
+/*
  * Subroutine: sub_c122c0_init_phase2
  * Bank:       $C1
  * Address:    $C1:22C0
@@ -587,7 +665,14 @@ void sub_c15467_main_menu(struct mf_game *game) {
         0xEF, 0x3D, 0x31, 0x46, 0x94, 0x52, 0xD6, 0x5A, 0x18, 0x63, 0x7B, 0x6F, 0xBD, 0x77, 0xFF, 0x7F
     };
 
-    /* Step 1: Reset video mode and unblank screen for menu display */
+    /* Menu PPU Configuration Table from Bank $C1:2466 (32 bytes) */
+    static const uint8_t s_menu_ppu_config[32] = {
+        0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x08, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x10,
+        0x00, 0x10, 0x00, 0x50, 0x00, 0x00, 0x00, 0x00, 0x60, 0x17, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00
+    };
+
+    /* Step 1: Configure SNES PPU display layers from ROM descriptor table ($C1:2466) */
+    sub_c101d7_load_ppu_table(game, s_menu_ppu_config);
     game->ppu.forced_blank = false;
     game->ppu.brightness = 0x0F;
 
@@ -742,10 +827,11 @@ void sub_c155ae_menu_select(struct mf_game *game) {
     }
     mf_ppu_write_cgram(&game->ppu, 0x0040, hl_pal, 32);
 
-    /* Step 7: Mirror menu geometry parameters into work RAM buffer */
+    /* Step 7: Mirror menu geometry parameters and apply PPU geometry descriptor table ($C1:5751) */
     if (p0f + 32 <= MF_WRAM_SIZE) {
         memcpy(&game->wram[p0f], s_menu_geometry, sizeof(s_menu_geometry));
     }
+    sub_c101d7_load_ppu_table(game, s_menu_geometry);
 
     /* Step 8: Initialize state trackers ($1C71, $1C73) */
     game->wram[0x1C71] = 0x00;
