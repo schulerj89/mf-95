@@ -175,6 +175,41 @@ static bool test_init_phase4_subroutine(void) {
     return true;
 }
 
+static bool test_init_phase5_subroutine(void) {
+    mf_game_t game;
+    mf_game_init(&game);
+    mf_boot_reset(&game);
+    sub_c10000_init_system(&game);
+    sub_c122c0_init_phase2(&game);
+    sub_c11823_init_phase3(&game);
+    sub_c10966_init_phase4(&game);
+
+    if (game.state != MF_GAME_STATE_INIT_PHASE5) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE5) return false;
+
+    sub_c11f04_init_phase5(&game);
+
+    /* Verify HDMA channel tracking word set to 0xFFFE */
+    if (game.wram[0x050B] != 0xFE || game.wram[0x050C] != 0xFF) return false;
+
+    /* Verify video buffer state registers cleared */
+    if (game.wram[0x0488] != 0x00 || game.wram[0x0489] != 0x00) return false;
+    if (game.wram[0x048A] != 0x00 || game.wram[0x048B] != 0x00) return false;
+    if (game.wram[0x048C] != 0x00 || game.wram[0x048D] != 0x00) return false;
+
+    /* Verify hardware HDMA disabled and secondary mask $0531 cleared */
+    if (game.hdma_enabled != false) return false;
+    if (game.wram[0x0531] != 0x00 || game.wram[0x0532] != 0x00) return false;
+
+    /* Verify return to $C0:CB90 and next target $C0:CE46 */
+    if (game.current_pc != MF_SNES_ADDR_BOOT_CONT5) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE6) return false;
+    if (!game.ready_for_jump) return false;
+    if (game.state != MF_GAME_STATE_INIT_PHASE6) return false;
+
+    return true;
+}
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -257,9 +292,19 @@ int main(int argc, char **argv) {
         failures++;
     }
 
+    /* 8. Test Subroutine $C1:1F04 (Phase 5 Init) */
+    printf("\n[*] Running System Init Phase 5 Subroutine Self-Test ($C1:1F04)...\n");
+    if (test_init_phase5_subroutine()) {
+        printf("    [PASS] Subroutine $C1:1F04: HDMA tracking set ($050B = 0xFFFE),\n");
+        printf("           video buffers cleared, HDMA disabled, and RTL return to $C0:CB90 verified.\n");
+    } else {
+        printf("    [FAIL] Subroutine $C1:1F04: Phase 5 initialization verification failed.\n");
+        failures++;
+    }
+
     printf("\n----------------------------------------------------\n");
     if (failures == 0) {
-        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966)\n");
+        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966, $C1:1F04)\n");
         printf("====================================================\n");
         return 0;
     } else {

@@ -210,5 +210,48 @@ void sub_c10966_init_phase4(struct mf_game *game) {
     game->ready_for_jump = true;
 }
 
+/*
+ * Subroutine: sub_c11f04_init_phase5
+ * Bank:       $C1
+ * Address:    $C1:1F04
+ * File Offset: 0x011F04
+ * Description: Fifth phase of system initialization called from the cold boot
+ *              dispatcher. Sets initial HDMA channel tracking parameter ($050B = 0xFFFE),
+ *              clears video buffer state registers ($0488, $048A, $048C, $0531),
+ *              disables all active hardware HDMA channels ($420C = 0x00), and returns
+ *              via RTL to the boot caller at $C0:CB90.
+ */
+void sub_c11f04_init_phase5(struct mf_game *game) {
+    if (!game) return;
+
+    /* Set HDMA channel tracking word to 0xFFFE in work RAM $050B */
+    game->wram[0x050B] = 0xFE;
+    game->wram[0x050C] = 0xFF;
+
+    /* Clear video buffer state registers */
+    game->wram[0x0488] = 0x00;
+    game->wram[0x0489] = 0x00;
+
+    game->wram[0x048A] = 0x00;
+    game->wram[0x048B] = 0x00;
+
+    game->wram[0x048C] = 0x00;
+    game->wram[0x048D] = 0x00;
+
+    /* Disable all 8 hardware HDMA channels ($420C = 0x00) */
+    game->hdma_enabled = false;
+
+    /* Clear secondary HDMA channel mask $0531 */
+    game->wram[0x0531] = 0x00;
+    game->wram[0x0532] = 0x00;
+
+    /* Return via RTL to cold boot caller at $C0:CB90 */
+    game->current_pc = MF_SNES_ADDR_BOOT_CONT5;
+    game->next_pc = MF_SNES_ADDR_INIT_PHASE6;
+    game->state = MF_GAME_STATE_INIT_PHASE6;
+    game->ready_for_jump = true;
+}
+
+
 
 

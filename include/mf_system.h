@@ -59,4 +59,17 @@ void sub_c11823_init_phase3(struct mf_game *game);
  */
 void sub_c10966_init_phase4(struct mf_game *game);
 
+/*
+ * Subroutine: sub_c11f04_init_phase5
+ * Bank:       $C1
+ * Address:    $C1:1F04
+ * File Offset: 0x011F04
+ * Description: Fifth phase of system initialization called from the cold boot
+ *              dispatcher. Sets initial HDMA channel tracking parameter ($050B = 0xFFFE),
+ *              clears video buffer state registers ($0488, $048A, $048C, $0531),
+ *              disables all active hardware HDMA channels ($420C = 0x00), and returns
+ *              via RTL to the boot caller at $C0:CB90.
+ */
+void sub_c11f04_init_phase5(struct mf_game *game);
+
 #endif /* MF_SYSTEM_H */
