@@ -15,6 +15,8 @@
 #define MF_SNES_ADDR_INIT_PHASE3   0xC11823
 #define MF_SNES_ADDR_BOOT_CONT3    0xC0CB88
 #define MF_SNES_ADDR_INIT_PHASE4   0xC10966
+#define MF_SNES_ADDR_BOOT_CONT4    0xC0CB8C
+#define MF_SNES_ADDR_INIT_PHASE5   0xC11F04
 
 #define MF_SNES_FILE_OFFSET_RESET_VECTOR  0x00CB63
 #define MF_SNES_FILE_OFFSET_BOOT_ENTRY    0x00CB6F
@@ -25,6 +27,8 @@
 #define MF_SNES_FILE_OFFSET_INIT_PHASE3   0x011823
 #define MF_SNES_FILE_OFFSET_BOOT_CONT3    0x00CB88
 #define MF_SNES_FILE_OFFSET_INIT_PHASE4   0x010966
+#define MF_SNES_FILE_OFFSET_BOOT_CONT4    0x00CB8C
+#define MF_SNES_FILE_OFFSET_INIT_PHASE5   0x011F04
 
 #define MF_WRAM_SIZE 0x20000 /* 128 KiB SNES Work RAM */
 
@@ -35,6 +39,7 @@ typedef enum {
     MF_GAME_STATE_INIT_PHASE2,
     MF_GAME_STATE_INIT_PHASE3,
     MF_GAME_STATE_INIT_PHASE4,
+    MF_GAME_STATE_INIT_PHASE5,
     MF_GAME_STATE_TITLE,
     MF_GAME_STATE_MENU,
     MF_GAME_STATE_GAMEPLAY
@@ -75,12 +80,12 @@ void mf_game_init(mf_game_t *game);
 void mf_boot_reset(mf_game_t *game);
 
 /*
- * Subroutine: sub_c10966_init_phase4 (Placeholder / Next Target)
+ * Subroutine: sub_c11f04_init_phase5 (Placeholder / Next Target)
  * Bank:       $C1
- * Address:    $C1:0966
- * File Offset: 0x010966
- * Description: Fourth system initialization routine called after sub_c11823 returns.
+ * Address:    $C1:1F04
+ * File Offset: 0x011F04
+ * Description: Fifth system initialization routine called after sub_c10966 returns.
  */
-void sub_c10966_init_phase4(mf_game_t *game);
+void sub_c11f04_init_phase5(mf_game_t *game);
 
 #endif /* MF_GAME_H */

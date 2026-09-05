@@ -47,4 +47,16 @@ void sub_c122c0_init_phase2(struct mf_game *game);
  */
 void sub_c11823_init_phase3(struct mf_game *game);
 
+/*
+ * Subroutine: sub_c10966_init_phase4
+ * Bank:       $C1
+ * Address:    $C1:0966
+ * File Offset: 0x010966
+ * Description: Fourth phase of system initialization called from the cold boot
+ *              dispatcher. Initializes direct page sound and event sequence table
+ *              pointers $A5 (0x02FF), $A7 (0x03FF), and $A9 (0x045F), and returns
+ *              via RTL to the boot caller at $C0:CB8C.
+ */
+void sub_c10966_init_phase4(struct mf_game *game);
+
 #endif /* MF_SYSTEM_H */

@@ -148,6 +148,33 @@ static bool test_init_phase3_subroutine(void) {
     return true;
 }
 
+static bool test_init_phase4_subroutine(void) {
+    mf_game_t game;
+    mf_game_init(&game);
+    mf_boot_reset(&game);
+    sub_c10000_init_system(&game);
+    sub_c122c0_init_phase2(&game);
+    sub_c11823_init_phase3(&game);
+
+    if (game.state != MF_GAME_STATE_INIT_PHASE4) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE4) return false;
+
+    sub_c10966_init_phase4(&game);
+
+    /* Verify direct page sequence pointers */
+    if (game.wram[0x00A5] != 0xFF || game.wram[0x00A6] != 0x02) return false;
+    if (game.wram[0x00A7] != 0xFF || game.wram[0x00A8] != 0x03) return false;
+    if (game.wram[0x00A9] != 0x5F || game.wram[0x00AA] != 0x04) return false;
+
+    /* Verify return to $C0:CB8C and next target $C1:1F04 */
+    if (game.current_pc != MF_SNES_ADDR_BOOT_CONT4) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE5) return false;
+    if (!game.ready_for_jump) return false;
+    if (game.state != MF_GAME_STATE_INIT_PHASE5) return false;
+
+    return true;
+}
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -219,9 +246,20 @@ int main(int argc, char **argv) {
         failures++;
     }
 
+    /* 7. Test Subroutine $C1:0966 (Phase 4 Init) */
+    printf("\n[*] Running System Init Phase 4 Subroutine Self-Test ($C1:0966)...\n");
+    if (test_init_phase4_subroutine()) {
+        printf("    [PASS] Subroutine $C1:0966: Direct page pointers initialized\n");
+        printf("           ($A5 = 0x02FF, $A7 = 0x03FF, $A9 = 0x045F),\n");
+        printf("           and RTL return to $C0:CB8C verified.\n");
+    } else {
+        printf("    [FAIL] Subroutine $C1:0966: Phase 4 initialization verification failed.\n");
+        failures++;
+    }
+
     printf("\n----------------------------------------------------\n");
     if (failures == 0) {
-        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823)\n");
+        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966)\n");
         printf("====================================================\n");
         return 0;
     } else {

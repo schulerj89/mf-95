@@ -47,18 +47,19 @@ void mf_boot_reset(mf_game_t *game) {
 }
 
 /*
- * Subroutine: sub_c10966_init_phase4 (Placeholder / Next Target)
+ * Subroutine: sub_c11f04_init_phase5 (Placeholder / Next Target)
  * Bank:       $C1
- * Address:    $C1:0966
- * File Offset: 0x010966
- * Description: Fourth system initialization routine called after sub_c11823 returns.
+ * Address:    $C1:1F04
+ * File Offset: 0x011F04
+ * Description: Fifth system initialization routine called after sub_c10966 returns.
  */
-void sub_c10966_init_phase4(mf_game_t *game) {
+void sub_c11f04_init_phase5(mf_game_t *game) {
     if (!game) return;
     /* Placeholder for next target */
-    game->current_pc = MF_SNES_ADDR_INIT_PHASE4;
-    game->state = MF_GAME_STATE_INIT_PHASE4;
+    game->current_pc = MF_SNES_ADDR_INIT_PHASE5;
+    game->state = MF_GAME_STATE_INIT_PHASE5;
     game->ready_for_jump = false;
 }
+
 
 

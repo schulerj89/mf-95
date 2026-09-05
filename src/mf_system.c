@@ -178,4 +178,37 @@ void sub_c11823_init_phase3(struct mf_game *game) {
     game->ready_for_jump = true;
 }
 
+/*
+ * Subroutine: sub_c10966_init_phase4
+ * Bank:       $C1
+ * Address:    $C1:0966
+ * File Offset: 0x010966
+ * Description: Fourth phase of system initialization called from the cold boot
+ *              dispatcher. Initializes direct page sound and event sequence table
+ *              pointers $A5 (0x02FF), $A7 (0x03FF), and $A9 (0x045F), and returns
+ *              via RTL to the boot caller at $C0:CB8C.
+ */
+void sub_c10966_init_phase4(struct mf_game *game) {
+    if (!game) return;
+
+    /* Set sound sequence table pointer $A5 = 0x02FF */
+    game->wram[0x00A5] = 0xFF;
+    game->wram[0x00A6] = 0x02;
+
+    /* Set sound sequence table pointer $A7 = 0x03FF */
+    game->wram[0x00A7] = 0xFF;
+    game->wram[0x00A8] = 0x03;
+
+    /* Set event sequence table pointer $A9 = 0x045F */
+    game->wram[0x00A9] = 0x5F;
+    game->wram[0x00AA] = 0x04;
+
+    /* Return via RTL to cold boot caller at $C0:CB8C */
+    game->current_pc = MF_SNES_ADDR_BOOT_CONT4;
+    game->next_pc = MF_SNES_ADDR_INIT_PHASE5;
+    game->state = MF_GAME_STATE_INIT_PHASE5;
+    game->ready_for_jump = true;
+}
+
+
 
