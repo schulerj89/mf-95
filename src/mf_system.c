@@ -760,6 +760,62 @@ void sub_c155ae_menu_select(struct mf_game *game) {
     game->ready_for_jump = true;
 }
 
+/*
+ * Subroutine: sub_c15777_menu_poll
+ * Bank:       $C1
+ * Address:    $C1:5777
+ * File Offset: 0x015777
+ * Description: Main Menu controller input poller and option dispatch coroutine task.
+ *              Evaluates task timer ($0008,X), samples joypad inputs via sub_c12582,
+ *              computes debounced triggers via sub_c12d5a, tests edge-trigger flag ($EC),
+ *              and dispatches to the option execution dispatcher ($C0:ED37 / $C0:EC9A)
+ *              when a menu confirmation button (Start / A) is pressed.
+ */
+void sub_c15777_menu_poll(struct mf_game *game) {
+    if (!game) return;
+
+    /* Retrieve active task control block offset from direct page variable $E0 */
+    uint16_t task_idx = (uint16_t)(game->wram[0x00E0] | (game->wram[0x00E1] << 8));
+    if (task_idx == 0 || task_idx + 10 >= MF_WRAM_SIZE) {
+        task_idx = 0x1C80;
+    }
+
+    /* Read task timer ($0008,X) */
+    uint16_t timer = (uint16_t)(game->wram[task_idx + 0x08] | (game->wram[task_idx + 0x09] << 8));
+
+    /* Check if frame threshold (120 frames / 0x0078) is reached */
+    if (timer == 0x0078) {
+        /* Poll joypad input state and calculate debounce triggers */
+        sub_c10463_init_controllers(game);
+
+        /* Test direct page trigger register ($EC) for Start or A button */
+        uint8_t trigger = game->wram[0x00EC];
+        if (trigger != 0) {
+            /* Option confirmed: Jump long to selection dispatcher at $C0:EC9A */
+            game->current_pc = MF_SNES_ADDR_MENU_POLL;
+            game->next_pc = 0xC0EC9A;
+            game->ready_for_jump = true;
+            return;
+        }
+
+        /* No button pressed: Update task execution handler to $C0:ED37 */
+        game->wram[task_idx + 0x02] = 0x37;
+        game->wram[task_idx + 0x03] = 0xED;
+        game->wram[task_idx + 0x04] = 0xC0;
+        game->wram[task_idx + 0x05] = 0x00;
+    } else {
+        /* Increment task timer until threshold */
+        timer++;
+        game->wram[task_idx + 0x08] = (uint8_t)(timer & 0xFF);
+        game->wram[task_idx + 0x09] = (uint8_t)(timer >> 8);
+    }
+
+    /* Return via RTL and advance to companion menu render task */
+    game->current_pc = MF_SNES_ADDR_MENU_POLL;
+    game->next_pc = MF_SNES_ADDR_MENU_RENDER;
+    game->ready_for_jump = true;
+}
+
 
 
 

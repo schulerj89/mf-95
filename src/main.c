@@ -20,6 +20,7 @@
 
 static mf_game_t g_game;
 static bool g_running = true;
+static char g_last_input[64] = "None (Awaiting Input)";
 
 static const char *get_state_name(mf_game_state_t st) {
     switch (st) {
@@ -39,6 +40,84 @@ static const char *get_state_name(mf_game_state_t st) {
     case MF_GAME_STATE_GAMEPLAY:    return "GAMEPLAY";
     default:                        return "UNKNOWN";
     }
+}
+
+static void draw_hud(HDC hdc, int width, int height) {
+    (void)height;
+    SetBkMode(hdc, TRANSPARENT);
+
+    /* Background banner for HUD */
+    HBRUSH bgBrush = CreateSolidBrush(RGB(16, 20, 32));
+    HBRUSH borderBrush = CreateSolidBrush(RGB(48, 80, 140));
+    RECT bannerRect = { 10, 10, width - 10, 195 };
+    FillRect(hdc, &bannerRect, bgBrush);
+    FrameRect(hdc, &bannerRect, borderBrush);
+
+    HFONT hFontTitle = CreateFontA(22, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN, "Segoe UI");
+    HFONT hFontText = CreateFontA(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN, "Consolas");
+
+    HGDIOBJ oldFont = SelectObject(hdc, hFontTitle);
+    SetTextColor(hdc, RGB(255, 215, 0)); /* Gold */
+    TextOutA(hdc, 24, 18, "MADDEN NFL '95 - NATIVE C ENGINE DISPLAY", 40);
+
+    SelectObject(hdc, hFontText);
+    SetTextColor(hdc, RGB(220, 220, 240));
+
+    char buf[256];
+    snprintf(buf, sizeof(buf), "State: %s (PC: $0x%06X)", get_state_name(g_game.state), (unsigned int)g_game.current_pc);
+    TextOutA(hdc, 24, 48, buf, (int)strlen(buf));
+
+    snprintf(buf, sizeof(buf), "Video: SNES Mode 2 (256x224 -> 3x Scale) | Brightness: %u/15 | Blank: %s",
+             g_game.ppu.brightness, g_game.ppu.forced_blank ? "YES" : "NO");
+    TextOutA(hdc, 24, 70, buf, (int)strlen(buf));
+
+    snprintf(buf, sizeof(buf), "Audio: Ports [$2140: 0x%02X, $2141: 0x%02X] (Menu Track $4A37 Queued)",
+             g_game.apu_ports[0], g_game.apu_ports[1]);
+    TextOutA(hdc, 24, 92, buf, (int)strlen(buf));
+
+    snprintf(buf, sizeof(buf), "Assets: %s (%u entries, %zu bytes)",
+             g_game.assets.is_loaded ? "assets/madden95.pak Loaded" : "Cleanroom Fallbacks",
+             g_game.assets.entry_count, g_game.assets.raw_data_size);
+    TextOutA(hdc, 24, 114, buf, (int)strlen(buf));
+
+    snprintf(buf, sizeof(buf), "Live Controller Input: %s | Target: sub_c1579e_menu_render", g_last_input);
+    SetTextColor(hdc, RGB(100, 255, 120)); /* Bright green */
+    TextOutA(hdc, 24, 136, buf, (int)strlen(buf));
+
+    SetTextColor(hdc, RGB(180, 180, 180));
+    TextOutA(hdc, 24, 162, "Controls: [Arrows] D-Pad  [Enter] Start  [Space] A  [Z] B  [R] Reset  [ESC] Exit", 76);
+
+    /* Palette Swatches bar */
+    RECT swatchBox = { 10, height - 60, width - 10, height - 10 };
+    FillRect(hdc, &swatchBox, bgBrush);
+    FrameRect(hdc, &swatchBox, borderBrush);
+
+    SetTextColor(hdc, RGB(200, 200, 200));
+    TextOutA(hdc, 24, height - 52, "Active CGRAM Palette Swatches (UI / Gradient / Highlight):", 58);
+
+    /* Draw small color blocks for the first 32 CGRAM colors */
+    int swatch_x = 24;
+    int swatch_y = height - 32;
+    for (int i = 0; i < 32 && (swatch_x + 18) < (width - 24); i++) {
+        uint32_t argb = mf_ppu_cgram_to_argb(g_game.ppu.cgram, (uint8_t)i, 15);
+        COLORREF color = RGB((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF);
+        HBRUSH cBrush = CreateSolidBrush(color);
+        RECT r = { swatch_x, swatch_y, swatch_x + 16, swatch_y + 16 };
+        FillRect(hdc, &r, cBrush);
+        FrameRect(hdc, &r, (HBRUSH)GetStockObject(WHITE_BRUSH));
+        DeleteObject(cBrush);
+        swatch_x += 20;
+    }
+
+    SelectObject(hdc, oldFont);
+    DeleteObject(hFontTitle);
+    DeleteObject(hFontText);
+    DeleteObject(bgBrush);
+    DeleteObject(borderBrush);
 }
 
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -67,30 +146,45 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             DIB_RGB_COLORS,
             SRCCOPY);
 
+        /* Overlay on-screen diagnostic HUD */
+        draw_hud(hdc, client.right - client.left, client.bottom - client.top);
+
         EndPaint(hwnd, &ps);
         return 0;
     }
     case WM_KEYDOWN:
         if (wParam == VK_ESCAPE) {
+            snprintf(g_last_input, sizeof(g_last_input), "ESC (Quitting)");
             printf("[INPUT] ESC pressed -> Exiting...\n");
             g_running = false;
             DestroyWindow(hwnd);
         } else if (wParam == 'R') {
+            snprintf(g_last_input, sizeof(g_last_input), "R (Soft Reset)");
             printf("[INPUT] 'R' pressed -> Triggering soft reset...\n");
             mf_game_init(&g_game);
         } else if (wParam == VK_RETURN) {
+            snprintf(g_last_input, sizeof(g_last_input), "START / RETURN");
             printf("[INPUT] START / RETURN pressed\n");
         } else if (wParam == VK_SPACE) {
+            snprintf(g_last_input, sizeof(g_last_input), "BUTTON A / SPACE");
             printf("[INPUT] BUTTON A / SPACE pressed\n");
+        } else if (wParam == 'Z') {
+            snprintf(g_last_input, sizeof(g_last_input), "BUTTON B / 'Z'");
+            printf("[INPUT] BUTTON B / 'Z' pressed\n");
         } else if (wParam == VK_UP) {
+            snprintf(g_last_input, sizeof(g_last_input), "D-PAD UP");
             printf("[INPUT] D-PAD UP pressed\n");
         } else if (wParam == VK_DOWN) {
+            snprintf(g_last_input, sizeof(g_last_input), "D-PAD DOWN");
             printf("[INPUT] D-PAD DOWN pressed\n");
         } else if (wParam == VK_LEFT) {
+            snprintf(g_last_input, sizeof(g_last_input), "D-PAD LEFT");
             printf("[INPUT] D-PAD LEFT pressed\n");
         } else if (wParam == VK_RIGHT) {
+            snprintf(g_last_input, sizeof(g_last_input), "D-PAD RIGHT");
             printf("[INPUT] D-PAD RIGHT pressed\n");
         }
+        InvalidateRect(hwnd, NULL, FALSE);
         return 0;
     case WM_DESTROY:
         printf("[SYSTEM] Window closed by user.\n");
@@ -106,8 +200,26 @@ int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
 
+    /* Ensure dedicated CLI console window exists and is visible */
+    HWND hConsole = GetConsoleWindow();
+    if (!hConsole) {
+        AllocConsole();
+        hConsole = GetConsoleWindow();
+        FILE *fpCon;
+        freopen_s(&fpCon, "CONOUT$", "w", stdout);
+        freopen_s(&fpCon, "CONOUT$", "w", stderr);
+        freopen_s(&fpCon, "CONIN$", "r", stdin);
+    }
+
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
+
+    if (hConsole) {
+        SetConsoleTitleA("Madden NFL '95 - Engine CLI Diagnostics");
+        ShowWindow(hConsole, SW_SHOW);
+        SetWindowPos(hConsole, HWND_TOP, 30, 30, 840, 720, SWP_SHOWWINDOW);
+        SetForegroundWindow(hConsole);
+    }
 
     printf("==========================================================\n");
     printf("  Madden NFL '95 (mf-95) - Native C Port Interactive CLI  \n");
@@ -155,9 +267,9 @@ int main(int argc, char **argv) {
     HWND hwnd = CreateWindowExA(
         0,
         "MF95_GameWindowClass",
-        "Madden NFL '95 - Native C Port",
+        "Madden NFL '95 - Native C Port (Display Output)",
         (WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX),
-        CW_USEDEFAULT, CW_USEDEFAULT,
+        890, 30,
         rc.right - rc.left, rc.bottom - rc.top,
         NULL, NULL, hInstance, NULL
     );
@@ -187,7 +299,7 @@ int main(int argc, char **argv) {
                    (unsigned int)g_game.next_pc);
             last_logged_state = g_game.state;
         }
-        if (g_game.state == MF_GAME_STATE_MENU && g_game.next_pc == MF_SNES_ADDR_MENU_POLL) {
+        if (g_game.state == MF_GAME_STATE_MENU && (g_game.next_pc == MF_SNES_ADDR_MENU_POLL || g_game.next_pc == MF_SNES_ADDR_MENU_RENDER)) {
             break;
         }
     }

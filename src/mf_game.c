@@ -58,6 +58,8 @@ void mf_game_step(mf_game_t *game) {
             sub_c15467_main_menu(game);
         } else if (game->next_pc == MF_SNES_ADDR_MENU_SELECT) {
             sub_c155ae_menu_select(game);
+        } else if (game->next_pc == MF_SNES_ADDR_MENU_POLL) {
+            sub_c15777_menu_poll(game);
         }
         break;
     default:
@@ -104,17 +106,16 @@ void mf_boot_reset(mf_game_t *game) {
 }
 
 /*
- * Subroutine: sub_c15777_menu_poll (Placeholder / Next Target)
+ * Subroutine: sub_c1579e_menu_render (Placeholder / Next Target)
  * Bank:       $C1
- * Address:    $C1:5777
- * File Offset: 0x015777
- * Description: Main Menu controller input poller and option dispatch coroutine task.
+ * Address:    $C1:579E
+ * File Offset: 0x01579E
+ * Description: Main Menu visual updater and cursor highlight renderer coroutine task.
  */
-void sub_c15777_menu_poll(mf_game_t *game) {
+void sub_c1579e_menu_render(mf_game_t *game) {
     if (!game) return;
     /* Placeholder for next target */
-    game->current_pc = MF_SNES_ADDR_MENU_POLL;
-    game->state = MF_GAME_STATE_GAMEPLAY;
+    game->current_pc = MF_SNES_ADDR_MENU_RENDER;
     game->ready_for_jump = false;
 }
 

@@ -158,6 +158,54 @@ static bool test_menu_select_subroutine(void) {
     return true;
 }
 
+static bool test_menu_poll_subroutine(void) {
+    mf_game_t game;
+    mf_game_init(&game);
+    mf_boot_reset(&game);
+    sub_c10000_init_system(&game);
+    sub_c122c0_init_phase2(&game);
+    sub_c11823_init_phase3(&game);
+    sub_c10966_init_phase4(&game);
+    sub_c11f04_init_phase5(&game);
+    sub_c0ce46_init_phase6(&game);
+    sub_c139f3_init_phase7(&game);
+    sub_c122c6_init_phase8(&game);
+    sub_c0cb9c_boot_tables(&game);
+    sub_c14de2_title_screen(&game);
+    sub_c15467_main_menu(&game);
+    sub_c155ae_menu_select(&game);
+
+    if (game.state != MF_GAME_STATE_MENU) return false;
+    if (game.next_pc != MF_SNES_ADDR_MENU_POLL) return false;
+
+    /* Part 1: Verify timer increment when threshold (0x0078) not yet reached */
+    sub_c15777_menu_poll(&game);
+    uint16_t task_idx = 0x1C80;
+    uint16_t timer = (uint16_t)(game.wram[task_idx + 0x08] | (game.wram[task_idx + 0x09] << 8));
+    if (timer != 1) return false;
+    if (game.next_pc != MF_SNES_ADDR_MENU_RENDER) return false;
+
+    /* Part 2: Simulate threshold reached (0x0078) with no confirm button pressed */
+    game.wram[task_idx + 0x08] = 0x78;
+    game.wram[task_idx + 0x09] = 0x00;
+    game.wram[0x00EC] = 0x00; /* No button pressed */
+    sub_c15777_menu_poll(&game);
+    /* Task execution handler should be set to $C0:ED37 */
+    if (game.wram[task_idx + 0x02] != 0x37 || game.wram[task_idx + 0x03] != 0xED) return false;
+    if (game.wram[task_idx + 0x04] != 0xC0 || game.wram[task_idx + 0x05] != 0x00) return false;
+    if (game.next_pc != MF_SNES_ADDR_MENU_RENDER) return false;
+
+    /* Part 3: Simulate threshold reached (0x0078) with Start / Button A pressed */
+    game.wram[task_idx + 0x08] = 0x78;
+    game.wram[task_idx + 0x09] = 0x00;
+    game.wram[0x00EC] = 0x80; /* Start button trigger flag */
+    sub_c15777_menu_poll(&game);
+    /* Should jump long to selection dispatcher at $C0:EC9A */
+    if (game.next_pc != 0xC0EC9A) return false;
+
+    return true;
+}
+
 int run_scene_tests(void) {
     int failures = 0;
 
@@ -188,6 +236,16 @@ int run_scene_tests(void) {
         printf("           transition to Menu Poller ($C1:5777) verified.\n");
     } else {
         printf("    [FAIL] Subroutine $C1:55AE: Menu option select execution failed.\n");
+        failures++;
+    }
+
+    printf("\n[*] Running Menu Controller Poller Handler Self-Test ($C1:5777)...\n");
+    if (test_menu_poll_subroutine()) {
+        printf("    [PASS] Subroutine $C1:5777: Task timer tracking, controller debounce check,\n");
+        printf("           option dispatch ($C0:ED37 / $C0:EC9A), and transition to Menu Render\n");
+        printf("           ($C1:579E) verified.\n");
+    } else {
+        printf("    [FAIL] Subroutine $C1:5777: Menu controller poller execution failed.\n");
         failures++;
     }
 

@@ -198,13 +198,22 @@ void sub_c15467_main_menu(struct mf_game *game);
 void sub_c155ae_menu_select(struct mf_game *game);
 
 /*
- * Subroutine: sub_c15777_menu_poll (Next Target)
+ * Subroutine: sub_c15777_menu_poll
  * Bank:       $C1
  * Address:    $C1:5777
  * File Offset: 0x015777
  * Description: Main Menu controller input poller and option dispatch coroutine task.
  */
 void sub_c15777_menu_poll(struct mf_game *game);
+
+/*
+ * Subroutine: sub_c1579e_menu_render (Next Target)
+ * Bank:       $C1
+ * Address:    $C1:579E
+ * File Offset: 0x01579E
+ * Description: Main Menu visual updater and cursor highlight renderer coroutine task.
+ */
+void sub_c1579e_menu_render(struct mf_game *game);
 
 #endif /* MF_SYSTEM_H */
 
