@@ -139,6 +139,16 @@ def extract_assets(rom_path, output_pak, raw_dir=None):
         "desc": "Main Menu Backdrop Gradient Color Palette ($C9:D530, 32 bytes)"
     })
 
+    # 9. Main Menu Selection Highlight Palette ($C7:E6B9, 32 bytes)
+    menu_hl_pal = base_data[0x07E6B9:0x07E6B9 + 32]
+    assets.append({
+        "name": "menu_palette_highlight",
+        "type": TYPE_PALETTE,
+        "data": menu_hl_pal,
+        "desc": "Main Menu Selection Highlight Color Palette ($C7:E6B9, 32 bytes)"
+    })
+
+
     # Build Asset Pack Binary
     os.makedirs(os.path.dirname(os.path.abspath(output_pak)), exist_ok=True)
 

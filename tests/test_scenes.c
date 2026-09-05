@@ -103,6 +103,61 @@ static bool test_main_menu_subroutine(void) {
     return true;
 }
 
+static bool test_menu_select_subroutine(void) {
+    mf_game_t game;
+    mf_game_init(&game);
+    mf_boot_reset(&game);
+    sub_c10000_init_system(&game);
+    sub_c122c0_init_phase2(&game);
+    sub_c11823_init_phase3(&game);
+    sub_c10966_init_phase4(&game);
+    sub_c11f04_init_phase5(&game);
+    sub_c0ce46_init_phase6(&game);
+    sub_c139f3_init_phase7(&game);
+    sub_c122c6_init_phase8(&game);
+    sub_c0cb9c_boot_tables(&game);
+    sub_c14de2_title_screen(&game);
+    sub_c15467_main_menu(&game);
+
+    if (game.state != MF_GAME_STATE_MENU) return false;
+    if (game.next_pc != MF_SNES_ADDR_MENU_SELECT) return false;
+
+    /* Execute Mode 2 Option Selection setup handler */
+    sub_c155ae_menu_select(&game);
+
+    /* Verify menu sub-mode updated ($1EF4 = 0x0004: Option Selection) */
+    if (game.wram[0x1EF4] != 0x04 || game.wram[0x1EF5] != 0x00) return false;
+
+    /* Verify active option cursor ($BF = 0x0002) */
+    if (game.wram[0x00BF] != 0x02 || game.wram[0x00C0] != 0x00) return false;
+
+    /* Verify selection frame delay ($41 = 60 frames) */
+    if (game.wram[0x0041] != 0x3C || game.wram[0x0042] != 0x00) return false;
+
+    /* Verify direct page buffer allocations ($0F, $11, $DA) */
+    uint16_t p0f = (uint16_t)(game.wram[0x000F] | (game.wram[0x0010] << 8));
+    uint16_t p11 = (uint16_t)(game.wram[0x0011] | (game.wram[0x0012] << 8));
+    uint16_t da  = (uint16_t)(game.wram[0x00DA] | (game.wram[0x00DB] << 8));
+
+    if (p11 != p0f + 0x0020) return false;
+    if (da  != p11 + 0x00C0) return false;
+
+    /* Verify selection highlight palette loaded in CGRAM slot 0x0040 */
+    if (game.ppu.cgram[0x0042] != 0xD6 || game.ppu.cgram[0x0043] != 0x7E) return false;
+    if (game.ppu.cgram[0x0044] != 0x73 || game.ppu.cgram[0x0045] != 0x7A) return false;
+
+    /* Verify state trackers ($1C73 = 0x0700) */
+    if (game.wram[0x1C73] != 0x00 || game.wram[0x1C74] != 0x07) return false;
+
+    /* Verify transition to menu input poller task at $C1:5777 */
+    if (game.current_pc != MF_SNES_ADDR_MENU_SELECT) return false;
+    if (game.next_pc != MF_SNES_ADDR_MENU_POLL) return false;
+    if (!game.ready_for_jump) return false;
+    if (game.state != MF_GAME_STATE_MENU) return false;
+
+    return true;
+}
+
 int run_scene_tests(void) {
     int failures = 0;
 
@@ -126,5 +181,16 @@ int run_scene_tests(void) {
         failures++;
     }
 
+    printf("\n[*] Running Menu Option Select Handler Self-Test ($C1:55AE)...\n");
+    if (test_menu_select_subroutine()) {
+        printf("    [PASS] Subroutine $C1:55AE: Sub-mode 4 set, buffers ($0F, $11) allocated,\n");
+        printf("           highlight palette loaded, active options set ($BF = 2), and\n");
+        printf("           transition to Menu Poller ($C1:5777) verified.\n");
+    } else {
+        printf("    [FAIL] Subroutine $C1:55AE: Menu option select execution failed.\n");
+        failures++;
+    }
+
     return failures;
 }
+

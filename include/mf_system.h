@@ -185,14 +185,27 @@ void sub_c14de2_title_screen(struct mf_game *game);
 void sub_c15467_main_menu(struct mf_game *game);
 
 /*
- * Subroutine: sub_c155ae_menu_select (Next Target)
+ * Subroutine: sub_c155ae_menu_select
  * Bank:       $C1
  * Address:    $C1:55AE
  * File Offset: 0x0155AE
- * Description: Main Menu Option Selection & Dispatch handler (sub-mode 4, parses active menu
- *              cursor $BF, configures game mode parameters $5751, and dispatches to selected mode).
+ * Description: Main Menu Option Selection & Setup handler (sub-mode 4). Sets up menu geometry
+ *              descriptor table at $C1:5751, configures window layers, initializes controllers,
+ *              allocates direct page buffers ($0F, $11), loads selection highlight palette
+ *              ($C7:E6B9) into CGRAM slot 0x0040, sets active option cursor ($BF = 2), and
+ *              spawns menu poller task ($C1:5777) and renderer task ($C1:579E).
  */
 void sub_c155ae_menu_select(struct mf_game *game);
 
+/*
+ * Subroutine: sub_c15777_menu_poll (Next Target)
+ * Bank:       $C1
+ * Address:    $C1:5777
+ * File Offset: 0x015777
+ * Description: Main Menu controller input poller and option dispatch coroutine task.
+ */
+void sub_c15777_menu_poll(struct mf_game *game);
+
 #endif /* MF_SYSTEM_H */
+
 

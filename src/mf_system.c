@@ -670,6 +670,97 @@ void sub_c15467_main_menu(struct mf_game *game) {
     game->ready_for_jump = true;
 }
 
+/*
+ * Subroutine: sub_c155ae_menu_select
+ * Bank:       $C1
+ * Address:    $C1:55AE
+ * File Offset: 0x0155AE
+ * Description: Main Menu Option Selection & Setup handler (sub-mode 4). Sets up menu geometry
+ *              descriptor table at $C1:5751, configures window layers, initializes controllers,
+ *              allocates direct page buffers ($0F, $11), loads selection highlight palette
+ *              ($C7:E6B9) into CGRAM slot 0x0040, sets active option cursor ($BF = 2), and
+ *              spawns menu poller task ($C1:5777) and renderer task ($C1:579E).
+ */
+void sub_c155ae_menu_select(struct mf_game *game) {
+    if (!game) return;
+
+    /* Menu Selection Highlight Palette from Bank $C7:E6B9 (32 bytes) */
+    static const uint8_t s_menu_palette_highlight[32] = {
+        0x00, 0x00, 0xD6, 0x7E, 0x73, 0x7A, 0x10, 0x72, 0xCE, 0x69, 0x8C, 0x65, 0x4A, 0x5D, 0x08, 0x59,
+        0xC6, 0x50, 0xA5, 0x4C, 0x63, 0x44, 0x42, 0x3C, 0x21, 0x38, 0x00, 0x30, 0x00, 0x28, 0x00, 0x24
+    };
+
+    /* Menu Geometry Descriptor Table from Bank $C1:5751 (32 bytes) */
+    static const uint8_t s_menu_geometry[32] = {
+        0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x01, 0x00, 0x0C, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x20,
+        0x00, 0x30, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x60, 0x17, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00
+    };
+
+    /* Step 1: Update menu sub-mode register to Option Selection ($1EF4 = 0x0004) */
+    game->wram[0x1EF4] = 0x04;
+    game->wram[0x1EF5] = 0x00;
+
+    /* Step 2: Initialize controller structures and clear transient buffers */
+    sub_c10463_init_controllers(game);
+
+    /* Step 3: Direct page dynamic allocation for option selection ($0F, $11 from $DA) */
+    uint16_t da = (uint16_t)(game->wram[0x00DA] | (game->wram[0x00DB] << 8));
+    if (da == 0) {
+        da = 0x560C;
+    }
+    uint16_t p0f = da;
+    uint16_t p11 = p0f + 0x0020;
+    da = p11 + 0x00C0;
+
+    game->wram[0x000F] = (uint8_t)(p0f & 0xFF);
+    game->wram[0x0010] = (uint8_t)(p0f >> 8);
+    game->wram[0x0011] = (uint8_t)(p11 & 0xFF);
+    game->wram[0x0012] = (uint8_t)(p11 >> 8);
+    game->wram[0x00DA] = (uint8_t)(da & 0xFF);
+    game->wram[0x00DB] = (uint8_t)(da >> 8);
+    game->wram[0x0545] = (uint8_t)(da & 0xFF);
+    game->wram[0x0546] = (uint8_t)(da >> 8);
+
+    /* Step 4: Set active option count / default selection ($00BF = 0x0002) */
+    game->wram[0x00BF] = 0x02;
+    game->wram[0x00C0] = 0x00;
+
+    /* Step 5: Initialize selection frame delay counter ($41 = 60 frames) */
+    game->wram[0x0041] = 0x3C;
+    game->wram[0x0042] = 0x00;
+
+    /* Step 6: Load option highlight palette into work RAM and CGRAM slot 0x0040 */
+    const uint8_t *hl_pal = s_menu_palette_highlight;
+    uint32_t hl_size = 0;
+    const uint8_t *hl_asset = (const uint8_t *)mf_assets_find(&game->assets, "menu_palette_highlight", &hl_size);
+    if (hl_asset && hl_size >= 32) {
+        hl_pal = hl_asset;
+    }
+
+    if (p11 + 32 <= MF_WRAM_SIZE) {
+        memcpy(&game->wram[p11], hl_pal, 32);
+    }
+    mf_ppu_write_cgram(&game->ppu, 0x0040, hl_pal, 32);
+
+    /* Step 7: Mirror menu geometry parameters into work RAM buffer */
+    if (p0f + 32 <= MF_WRAM_SIZE) {
+        memcpy(&game->wram[p0f], s_menu_geometry, sizeof(s_menu_geometry));
+    }
+
+    /* Step 8: Initialize state trackers ($1C71, $1C73) */
+    game->wram[0x1C71] = 0x00;
+    game->wram[0x1C72] = 0x00;
+    game->wram[0x1C73] = 0x00;
+    game->wram[0x1C74] = 0x07;
+
+    /* Step 9: Transition program counter to input poller task at $C1:5777 */
+    game->current_pc = MF_SNES_ADDR_MENU_SELECT;
+    game->next_pc = MF_SNES_ADDR_MENU_POLL;
+    game->state = MF_GAME_STATE_MENU;
+    game->ready_for_jump = true;
+}
+
+
 
 
 

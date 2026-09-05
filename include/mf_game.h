@@ -30,6 +30,7 @@
 #define MF_SNES_ADDR_TITLE_SCREEN  0xC14DE2
 #define MF_SNES_ADDR_MAIN_MENU     0xC15467
 #define MF_SNES_ADDR_MENU_SELECT   0xC155AE
+#define MF_SNES_ADDR_MENU_POLL     0xC15777
 
 #define MF_SNES_FILE_OFFSET_RESET_VECTOR  0x00CB63
 #define MF_SNES_FILE_OFFSET_BOOT_ENTRY    0x00CB6F
@@ -54,6 +55,8 @@
 #define MF_SNES_FILE_OFFSET_TITLE_SCREEN  0x014DE2
 #define MF_SNES_FILE_OFFSET_MAIN_MENU     0x015467
 #define MF_SNES_FILE_OFFSET_MENU_SELECT   0x0155AE
+#define MF_SNES_FILE_OFFSET_MENU_POLL     0x015777
+
 
 #define MF_WRAM_SIZE 0x20000 /* 128 KiB SNES Work RAM */
 #define MF_SRAM_SIZE 0x2000  /* 8 KiB SNES Battery-Backed Save RAM ($30:6000-$7FFF) */
@@ -113,14 +116,14 @@ void mf_game_init(mf_game_t *game);
 void mf_boot_reset(mf_game_t *game);
 
 /*
- * Subroutine: sub_c155ae_menu_select (Placeholder / Next Target)
+ * Subroutine: sub_c15777_menu_poll (Placeholder / Next Target)
  * Bank:       $C1
- * Address:    $C1:55AE
- * File Offset: 0x0155AE
- * Description: Main Menu Option Selection & Dispatch handler (sub-mode 4, parses active menu
- *              cursor $BF, configures game mode parameters $5751, and dispatches to selected mode).
+ * Address:    $C1:5777
+ * File Offset: 0x015777
+ * Description: Main Menu controller input poller and option dispatch coroutine task.
  */
-void sub_c155ae_menu_select(mf_game_t *game);
+void sub_c15777_menu_poll(mf_game_t *game);
 
 #endif /* MF_GAME_H */
+
 
