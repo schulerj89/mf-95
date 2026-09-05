@@ -30,8 +30,9 @@ static bool test_title_screen_subroutine(void) {
     /* Verify palette setup flag set */
     if (game.wram[0x0490] != 0x01) return false;
 
-    /* Verify intro active in sub-mode 1 */
-    if (game.wram[0x1EF4] != 0x01) return false;
+    /* $C1:4DE2 stores sub-mode 2 after scheduling both intro tasks. */
+    if (game.wram[0x1EF4] != 0x02 || game.wram[0x1EF5] != 0x00) return false;
+    if (game.wram[0x048E] != 0x10 || game.wram[0x048F] != 0x00) return false;
     if (game.state != MF_GAME_STATE_TITLE) return false;
 
     /* Trigger Start button to skip intro and verify transition to Mode 2 (Main Menu, $1EF0 = 0x0002) */
@@ -221,8 +222,8 @@ int run_scene_tests(void) {
 
     printf("\n[*] Running Title Screen Scene Handler Self-Test ($C1:4DE2)...\n");
     if (test_title_screen_subroutine()) {
-        printf("    [PASS] Subroutine $C1:4DE2: PPU screen setup, title audio track ($4A51)\n");
-        printf("           queued, palette configured, and transition to Main Menu ($1EF0 = 0x0002,\n");
+        printf("    [PASS] Subroutine $C1:4DE2: Original sub-mode 2 and $048E state set,\n");
+        printf("           title track $4A51 queued, and Start transition to Main Menu ($1EF0 = 0x0002,\n");
         printf("           $C1:5467) verified.\n");
     } else {
         printf("    [FAIL] Subroutine $C1:4DE2: Title screen scene execution failed.\n");
@@ -261,4 +262,3 @@ int run_scene_tests(void) {
 
     return failures;
 }
-

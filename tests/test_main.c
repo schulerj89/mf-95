@@ -25,6 +25,9 @@ int main(int argc, char **argv) {
     /* 5. Asset Container & Packaging Tests */
     failures += run_asset_tests();
 
+    /* 6. ROM-derived EA intro presentation stream */
+    failures += run_intro_tests();
+
     printf("\n----------------------------------------------------\n");
     if (failures == 0) {
         printf("Result: ALL TESTS PASSED (PPU + Audio + Boot Sequence + Scenes + Assets)\n");

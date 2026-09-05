@@ -103,6 +103,9 @@ typedef struct mf_game {
     uint32_t current_pc;
     uint32_t next_pc;
     bool ready_for_jump;
+
+    /* Host-side presentation cursor for the ROM-derived $C1:4DE2 frames. */
+    uint32_t intro_tick;
 } mf_game_t;
 
 /* Core Game Lifecycle */
@@ -131,5 +134,4 @@ void mf_boot_reset(mf_game_t *game);
 void sub_c15777_menu_poll(mf_game_t *game);
 
 #endif /* MF_GAME_H */
-
 

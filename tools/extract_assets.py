@@ -1,23 +1,40 @@
 #!/usr/bin/env python3
 """
 Madden NFL '95 (SNES) - Asset Extractor & Pack Generator
-Extracts graphics, audio descriptors, palettes, and data tables
-from an authentic Madden NFL '95 SNES ROM and generates an
-external asset container (madden95.pak).
+
+Extracts verified data from an authentic Madden NFL '95 SNES ROM and
+generates an external asset container (madden95.pak).  The EA Sports intro
+currently crosses several not-yet-ported C6 object/scheduler routines, so the
+extractor also asks Mesen to render that sequence from the user's ROM and packs
+the resulting BGR555 frames.  This is a temporary presentation bridge, not a
+claim that those dependent routines have already been decompiled.
 
 STRICT POLICY:
 This tool generates local external assets only. Under no circumstances
 should the resulting .pak or raw extracted files be committed to git.
 """
 
-import os
-import sys
-import struct
-import zlib
 import argparse
+import glob
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import struct
+import subprocess
+import sys
+import tempfile
+import time
+import zlib
 
 PAK_MAGIC = b"MF95PAK\x00"
 PAK_VERSION = 1
+EA_STREAM_MAGIC = b"MF95EA1\x00"
+EA_STREAM_VERSION = 1
+EXPECTED_ROM_SHA256 = "0AD77AE7AF231313E1369A52D1622B88E3751AA5EC774628DF7071F9E4244ABC"
+CAPTURE_STEP = 2
+CAPTURE_LAST_FRAME = 330
 
 # Asset Types
 TYPE_GRAPHICS = 1
@@ -39,7 +56,226 @@ def find_rom():
             return p
     return None
 
-def extract_assets(rom_path, output_pak, raw_dir=None):
+def find_mesen(explicit_path=None):
+    if explicit_path:
+        candidate = os.path.abspath(explicit_path)
+        return candidate if os.path.isfile(candidate) else None
+
+    candidate = shutil.which("mesen") or shutil.which("Mesen.exe")
+    if candidate:
+        return candidate
+
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        pattern = os.path.join(
+            local_app_data,
+            "Microsoft", "WinGet", "Packages", "SourMesen.Mesen2_*", "Mesen.exe"
+        )
+        matches = sorted(glob.glob(pattern))
+        if matches:
+            return matches[-1]
+    return None
+
+def validate_rom(base_data):
+    digest = hashlib.sha256(base_data).hexdigest().upper()
+    if digest != EXPECTED_ROM_SHA256:
+        print("[ERROR] ROM revision does not match Madden NFL '95 (USA).")
+        print(f"        Expected SHA-256: {EXPECTED_ROM_SHA256}")
+        print(f"        Actual SHA-256:   {digest}")
+        return False
+    print(f"[*] ROM SHA-256 verified: {digest}")
+    return True
+
+def encode_rle_frame(colors):
+    """Encode one BGR555 frame as bounded repeat/literal packets."""
+    encoded = bytearray()
+    pixel_count = len(colors)
+    index = 0
+
+    while index < pixel_count:
+        repeat = 1
+        while (index + repeat < pixel_count and
+               colors[index + repeat] == colors[index] and
+               repeat < 0x8000):
+            repeat += 1
+
+        if repeat >= 3:
+            encoded.extend(struct.pack("<HH", 0x8000 | (repeat - 1), colors[index]))
+            index += repeat
+            continue
+
+        literal_start = index
+        index += repeat
+        while index < pixel_count and (index - literal_start) < 0x8000:
+            next_repeat = 1
+            while (index + next_repeat < pixel_count and
+                   colors[index + next_repeat] == colors[index] and
+                   next_repeat < 3):
+                next_repeat += 1
+            if next_repeat >= 3:
+                break
+            index += next_repeat
+
+        literal_count = index - literal_start
+        encoded.extend(struct.pack("<H", literal_count - 1))
+        encoded.extend(struct.pack(f"<{literal_count}H", *colors[literal_start:index]))
+
+    return bytes(encoded)
+
+def png_to_bgr555(path):
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise RuntimeError(
+            "Pillow is required for EA intro extraction (python -m pip install Pillow)."
+        ) from exc
+
+    with Image.open(path) as image:
+        image = image.convert("RGB")
+        if image.size != (256, 224):
+            raise RuntimeError(f"Unexpected Mesen capture size {image.size} for {path}")
+        colors = []
+        for red, green, blue in image.getdata():
+            red5 = (red * 31 + 127) // 255
+            green5 = (green * 31 + 127) // 255
+            blue5 = (blue * 31 + 127) // 255
+            colors.append(red5 | (green5 << 5) | (blue5 << 10))
+        return colors
+
+def build_ea_intro_stream(frame_paths, capture_step):
+    frames = [encode_rle_frame(png_to_bgr555(path)) for path in frame_paths]
+    if not frames:
+        raise RuntimeError("Mesen produced no EA intro frames")
+
+    # Header: magic, version, dimensions, frame count, ticks per frame,
+    # loop start/end, reserved, then frame_count + 1 absolute offsets.
+    header_size = 24 + (len(frames) + 1) * 4
+    offsets = [header_size]
+    for frame in frames:
+        offsets.append(offsets[-1] + len(frame))
+
+    header = bytearray(EA_STREAM_MAGIC)
+    header.extend(struct.pack(
+        "<8H",
+        EA_STREAM_VERSION,
+        256,
+        224,
+        len(frames),
+        capture_step,
+        len(frames) - 1,
+        len(frames),
+        0,
+    ))
+    header.extend(struct.pack(f"<{len(offsets)}I", *offsets))
+    return bytes(header) + b"".join(frames)
+
+def capture_ea_intro(rom_path, mesen_path):
+    script_path = Path(__file__).with_name("capture_ea_intro.lua")
+    if not script_path.is_file():
+        raise RuntimeError(f"Mesen capture script is missing: {script_path}")
+
+    with tempfile.TemporaryDirectory(prefix="mf95_ea_intro_") as capture_dir:
+        # Mesen resolves settings beside a copied executable.  Keeping this
+        # private makes extraction deterministic and leaves the user's emulator
+        # configuration and save directory untouched.
+        runtime_dir = os.path.join(capture_dir, "portable-mesen")
+        save_dir = os.path.join(capture_dir, "isolated-saves")
+        os.makedirs(runtime_dir)
+        os.makedirs(save_dir)
+        capture_mesen = os.path.join(runtime_dir, "Mesen.exe")
+        shutil.copyfile(mesen_path, capture_mesen)
+        settings = {
+            "Debug": {"ScriptWindow": {
+                "AllowIoOsAccess": True,
+                "ScriptTimeout": 60,
+                "SaveScriptBeforeRun": False,
+            }},
+            "Preferences": {
+                "SingleInstance": False,
+                "PauseWhenInBackground": False,
+                "AutoLoadPatches": False,
+                "OverrideSaveDataFolder": True,
+                "SaveDataFolder": save_dir,
+            },
+            "Snes": {
+                "Port1": {"Type": "SnesController"},
+                "Port2": {"Type": "None"},
+                "DisableFrameSkipping": True,
+                "EnableRandomPowerOnState": False,
+                "RamPowerOnState": "AllZeros",
+                "ForceFixedResolution": False,
+                "Overscan": {"Top": 7, "Bottom": 8, "Left": 0, "Right": 0},
+            },
+            "Video": {
+                "VideoFilter": "None",
+                "AspectRatio": "NoStretching",
+                "Brightness": 0,
+                "Contrast": 0,
+                "Hue": 0,
+                "Saturation": 0,
+                "ScanlineIntensity": 0,
+                "UseBilinearInterpolation": False,
+                "ScreenRotation": "None",
+            },
+        }
+        with open(os.path.join(runtime_dir, "settings.json"), "w", encoding="utf-8") as settings_file:
+            json.dump(settings, settings_file, indent=2)
+
+        env = os.environ.copy()
+        env["MF95_CAPTURE_DIR"] = capture_dir.replace("\\", "/")
+        env["MF95_CAPTURE_STEP"] = str(CAPTURE_STEP)
+        env["MF95_CAPTURE_LAST"] = str(CAPTURE_LAST_FRAME)
+        env["MF95_CAPTURE_BOOT"] = "57"
+
+        command = [
+            capture_mesen,
+            "--testrunner",
+            "--timeout=60",
+            os.path.abspath(rom_path),
+            str(script_path.resolve()),
+        ]
+        print(f"[*] Capturing original EA Sports sequence with Mesen ({CAPTURE_STEP}-frame sampling)...")
+        process = subprocess.Popen(
+            command,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        done_path = os.path.join(capture_dir, "capture.done")
+        deadline = time.monotonic() + 60.0
+        while time.monotonic() < deadline:
+            if os.path.isfile(done_path):
+                break
+            if process.poll() is not None:
+                break
+            time.sleep(0.05)
+
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+
+        output = process.stdout.read() if process.stdout else ""
+        frame_paths = sorted(Path(capture_dir).glob("frame_*.png"))
+        expected_count = (CAPTURE_LAST_FRAME // CAPTURE_STEP) + 1
+        if not os.path.isfile(done_path) or len(frame_paths) != expected_count:
+            if output.strip():
+                print(output.strip())
+            raise RuntimeError(
+                "Mesen capture incomplete: "
+                f"script_loaded={os.path.isfile(os.path.join(capture_dir, 'script.loaded'))}, "
+                f"expected {expected_count} frames, found {len(frame_paths)}"
+            )
+
+        stream = build_ea_intro_stream(frame_paths, CAPTURE_STEP)
+        print(f"[+] Captured {len(frame_paths)} authentic frames ({len(stream):,} bytes packed).")
+        return stream
+
+def extract_assets(rom_path, output_pak, raw_dir=None, mesen_path=None):
     if not os.path.exists(rom_path):
         print(f"[ERROR] ROM file not found: {rom_path}")
         return False
@@ -58,10 +294,11 @@ def extract_assets(rom_path, output_pak, raw_dir=None):
         print(f"[ERROR] ROM data too small: {len(base_data)} bytes (expected at least 1MB).")
         return False
 
+    if not validate_rom(base_data):
+        return False
+
     internal_title = base_data[0x00FFC0:0x00FFD5].decode("ascii", errors="replace").strip()
     print(f"[*] Found SNES Internal Title: '{internal_title}'")
-    if "madden" not in internal_title.lower():
-        print(f"[WARNING] Internal title does not contain 'MADDEN'. Proceeding with cautious offset extraction.")
 
     assets = []
 
@@ -83,45 +320,25 @@ def extract_assets(rom_path, output_pak, raw_dir=None):
         "desc": "Team Field Roster Table (132 bytes)"
     })
 
-    # 3. Bank C6 Compressed Graphics Chunks (IDs 1..4)
-    chunk_ptrs = [0x079E35, 0x079E4F, 0x079E81, 0x079E9B]
-    for idx, ptr in enumerate(chunk_ptrs, start=1):
-        chunk_data = base_data[ptr:ptr + 4096]
-        assets.append({
-            "name": f"title_gfx_chunk{idx}",
-            "type": TYPE_GRAPHICS,
-            "data": chunk_data,
-            "desc": f"Title Graphic Chunk {idx} (Bank $C6/C7 Stream)"
-        })
-
-    # 4. Title Palette Setup Table ($C1:01A6, 512 bytes CGRAM map)
-    palette_data = base_data[0x0101A6:0x0101A6 + 512]
+    # 3. Original EA Sports presentation, rendered by the original code at
+    #    $C1:4DE2.  This bridges the unported C6 object/scheduler dependency.
+    mesen = find_mesen(mesen_path)
+    if not mesen:
+        print("[ERROR] Mesen 2 was not found. Install it or pass --mesen <Mesen.exe>.")
+        return False
+    try:
+        ea_intro = capture_ea_intro(rom_path, mesen)
+    except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+        print(f"[ERROR] Could not capture EA intro: {exc}")
+        return False
     assets.append({
-        "name": "title_palette",
-        "type": TYPE_PALETTE,
-        "data": palette_data,
-        "desc": "Master Title Screen CGRAM Palette Data (512 bytes)"
+        "name": "ea_intro_frames",
+        "type": TYPE_GRAPHICS,
+        "data": ea_intro,
+        "desc": "ROM-rendered $C1:4DE2 EA Sports presentation (BGR555 RLE)"
     })
 
-    # 5. Title Theme Audio Sequence ($C1:1A18, Track 0x4A51)
-    title_audio_data = base_data[0x011A18:0x011A18 + 2048]
-    assets.append({
-        "name": "title_music_4a51",
-        "type": TYPE_AUDIO,
-        "data": title_audio_data,
-        "desc": "Title Audio Track 0x4A51 & APU Sequence Stream"
-    })
-
-    # 6. Menu Theme Audio Sequence (Track 0x4A37)
-    menu_audio_data = base_data[0x015467:0x015467 + 2048]
-    assets.append({
-        "name": "menu_music_4a37",
-        "type": TYPE_AUDIO,
-        "data": menu_audio_data,
-        "desc": "Main Menu Audio Track 0x4A37 & APU Sequence Stream"
-    })
-
-    # 7. Main Menu UI Palette ($CA:FB10, 32 bytes)
+    # 4. Main Menu UI Palette ($CA:FB10, 32 bytes)
     menu_ui_pal = base_data[0x0AFB10:0x0AFB10 + 32]
     assets.append({
         "name": "menu_palette_ui",
@@ -130,7 +347,7 @@ def extract_assets(rom_path, output_pak, raw_dir=None):
         "desc": "Main Menu UI Color Palette ($CA:FB10, 32 bytes)"
     })
 
-    # 8. Main Menu Backdrop Gradient Palette ($C9:D530, 32 bytes)
+    # 5. Main Menu Backdrop Gradient Palette ($C9:D530, 32 bytes)
     menu_grad_pal = base_data[0x09D530:0x09D530 + 32]
     assets.append({
         "name": "menu_palette_gradient",
@@ -139,7 +356,7 @@ def extract_assets(rom_path, output_pak, raw_dir=None):
         "desc": "Main Menu Backdrop Gradient Color Palette ($C9:D530, 32 bytes)"
     })
 
-    # 9. Main Menu Selection Highlight Palette ($C7:E6B9, 32 bytes)
+    # 6. Main Menu Selection Highlight Palette ($C7:E6B9, 32 bytes)
     menu_hl_pal = base_data[0x07E6B9:0x07E6B9 + 32]
     assets.append({
         "name": "menu_palette_highlight",
@@ -229,6 +446,7 @@ def main():
     parser.add_argument("--rom", "-r", default=None, help="Path to Madden NFL '95 SNES ROM (.sfc/.smc)")
     parser.add_argument("--output", "-o", default="assets/madden95.pak", help="Output asset container path (default: assets/madden95.pak)")
     parser.add_argument("--raw", help="Optional directory to extract individual raw .bin assets")
+    parser.add_argument("--mesen", help="Optional path to Mesen.exe for original intro capture")
     parser.add_argument("--verify", "-v", action="store_true", help="Verify an existing asset pack")
     args = parser.parse_args()
 
@@ -241,7 +459,7 @@ def main():
         print("Please provide --rom <path_to_rom.sfc>.")
         sys.exit(1)
 
-    success = extract_assets(rom, args.output, args.raw)
+    success = extract_assets(rom, args.output, args.raw, args.mesen)
     sys.exit(0 if success else 1)
 
 if __name__ == "__main__":

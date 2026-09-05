@@ -38,6 +38,7 @@ This repository contains **strictly source code, build scripts, and documentatio
 ### Prerequisites
 - Windows 10/11 with Visual Studio 2022 (Desktop C++ workload).
 - Or CMake 3.20+ with any C11 compatible compiler.
+- Mesen 2 and Python Pillow for generating the local EA intro presentation stream.
 
 ### One-Click Build & Test (PowerShell / Command Prompt)
 
@@ -66,13 +67,22 @@ python tools/extract_assets.py --rom "F:\Games\SNES\Madden NFL 95 (USA).sfc"
 
 *(If `--rom` is omitted, the script automatically scans common local paths for the ROM file).*
 
-The extractor produces **`assets/madden95.pak`** (gitignored), which packages:
+The extractor verifies the exact USA ROM SHA-256 before producing
+**`assets/madden95.pak`** (gitignored), which packages:
 - **`table_c8_2c8b`**: Controller button mapping table (42 bytes)
 - **`table_c8_2bd0`**: Team field roster & player assignment tables (132 bytes)
-- **`title_gfx_chunk1` through `chunk4`**: Bank `$C6/$C7` graphics stream chunks (EA Sports splash, Title stadium art, Madden portrait, NFL font)
-- **`title_palette`**: Master CGRAM color palette data
-- **`title_music_4a51`**: Title theme audio sequence stream
-- **`menu_music_4a37`**: Main menu audio sequence stream
+- **`ea_intro_frames`**: BGR555/RLE presentation frames rendered from the original
+  `$C1:4DE2` path by Mesen. This is a visible bridge across the not-yet-converted
+  C6 object loader and scheduled animation tasks; it is not stored in Git.
+- **`menu_palette_ui`**, **`menu_palette_gradient`**, and
+  **`menu_palette_highlight`**: verified menu palette data
+
+The earlier extractor labels for `$C1:01A6`, `$C1:1A18`, and `$C1:5467` were
+removed because those offsets are executable routines, not raw palette or audio
+streams.
+
+The desktop build displays the unobstructed 256×224 game image by default. Press
+`F1` to toggle the diagnostic overlay and `Enter` for Start.
 
 ### Verifying an Asset Pack
 

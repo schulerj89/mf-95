@@ -20,6 +20,7 @@
 
 static mf_game_t g_game;
 static bool g_running = true;
+static bool g_show_diagnostics = false;
 static char g_last_input[64] = "None (Awaiting Input)";
 
 static const char *get_state_name(mf_game_state_t st) {
@@ -146,8 +147,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             DIB_RGB_COLORS,
             SRCCOPY);
 
-        /* Overlay on-screen diagnostic HUD */
-        draw_hud(hdc, client.right - client.left, client.bottom - client.top);
+        if (g_show_diagnostics) {
+            draw_hud(hdc, client.right - client.left, client.bottom - client.top);
+        }
 
         EndPaint(hwnd, &ps);
         return 0;
@@ -165,6 +167,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         } else if (wParam == VK_RETURN) {
             snprintf(g_last_input, sizeof(g_last_input), "START / RETURN");
             printf("[INPUT] START / RETURN pressed\n");
+            g_game.wram[0x00EC] |= 0x10;
+        } else if (wParam == VK_F1) {
+            g_show_diagnostics = !g_show_diagnostics;
+            snprintf(g_last_input, sizeof(g_last_input), "F1 (Diagnostics %s)",
+                     g_show_diagnostics ? "On" : "Off");
+            printf("[DISPLAY] Diagnostic overlay %s\n",
+                   g_show_diagnostics ? "enabled" : "disabled");
         } else if (wParam == VK_SPACE) {
             snprintf(g_last_input, sizeof(g_last_input), "BUTTON A / SPACE");
             printf("[INPUT] BUTTON A / SPACE pressed\n");
@@ -335,12 +344,13 @@ int main(int argc, char **argv) {
 
     printf("\n[5/5] Entering interactive game loop (60 FPS)...\n");
     printf("----------------------------------------------------------\n");
-    printf("Controls:\n");
+    printf("Controls (the game image is unobstructed by default):\n");
     printf("  [Arrow Keys] D-Pad Navigation\n");
     printf("  [Enter]      Start Button\n");
     printf("  [Space]      Button A\n");
     printf("  [Z]          Button B\n");
     printf("  [R]          Soft Reset\n");
+    printf("  [F1]         Toggle Diagnostic Overlay\n");
     printf("  [ESC]        Quit Application\n");
     printf("----------------------------------------------------------\n\n");
 

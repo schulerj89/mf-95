@@ -10,6 +10,7 @@ set(MF95_SOURCES
     src/mf_ppu.c
     src/mf_audio.c
     src/mf_assets.c
+    src/mf_intro.c
     src/mf_system.c
     src/mf_game.c
 )
@@ -19,6 +20,7 @@ set(MF95_HEADERS
     include/mf_ppu.h
     include/mf_audio.h
     include/mf_assets.h
+    include/mf_intro.h
     include/mf_system.h
     include/mf_game.h
 )
@@ -36,6 +38,7 @@ set(MF95_TEST_SOURCES
     tests/test_ppu.c
     tests/test_audio.c
     tests/test_assets.c
+    tests/test_intro.c
     tests/test_boot.c
     tests/test_scenes.c
     tests/test_main.c
@@ -63,5 +66,3 @@ else()
     target_link_libraries(mf95_tests m)
     target_link_libraries(mf95 m)
 endif()
-
-

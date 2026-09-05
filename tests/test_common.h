@@ -14,6 +14,7 @@
 int run_ppu_tests(void);
 int run_audio_tests(void);
 int run_asset_tests(void);
+int run_intro_tests(void);
 int run_boot_tests(void);
 int run_scene_tests(void);
 

@@ -7,8 +7,10 @@ void mf_game_init(mf_game_t *game) {
     mf_ppu_init(&game->ppu);
     mf_audio_init(&game->audio, MF_AUDIO_DEFAULT_RATE);
     mf_assets_init(&game->assets);
-    /* Attempt to load asset pack if present */
-    mf_assets_load(&game->assets, "assets/madden95.pak");
+    /* Support launching from either the repository root or build directory. */
+    if (!mf_assets_load(&game->assets, "assets/madden95.pak")) {
+        mf_assets_load(&game->assets, "../assets/madden95.pak");
+    }
     game->state = MF_GAME_STATE_RESET;
     game->current_pc = MF_SNES_ADDR_RESET_VECTOR;
     game->next_pc = MF_SNES_ADDR_RESET_VECTOR;
@@ -118,7 +120,6 @@ void sub_c1579e_menu_render(mf_game_t *game) {
     game->current_pc = MF_SNES_ADDR_MENU_RENDER;
     game->ready_for_jump = false;
 }
-
 
 
 

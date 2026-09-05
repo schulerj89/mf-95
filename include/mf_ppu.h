@@ -50,6 +50,7 @@ typedef struct {
     bool obj_enabled;
     uint8_t brightness;       /* 0 (blank/black) to 15 (full) */
     bool forced_blank;
+    bool framebuffer_override; /* ROM-derived host frame already composed */
 
     uint32_t framebuffer[MF_SCREEN_PIXELS];
 } mf_ppu_t;

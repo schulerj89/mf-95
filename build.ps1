@@ -40,6 +40,7 @@ $SrcMain = Join-Path $Root "src\main.c"
 $SrcPpu = Join-Path $Root "src\mf_ppu.c"
 $SrcAudio = Join-Path $Root "src\mf_audio.c"
 $SrcAssets = Join-Path $Root "src\mf_assets.c"
+$SrcIntro = Join-Path $Root "src\mf_intro.c"
 $SrcSystem = Join-Path $Root "src\mf_system.c"
 $SrcGame = Join-Path $Root "src\mf_game.c"
 
@@ -51,11 +52,11 @@ $CompileBatchContent = @"
 @echo off
 call "$VcVars" > nul
 echo Compiling mf95_tests.exe (Modular Subsystem Tests: PPU + Audio + Assets + Boot + Scenes)...
-cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /I "$TestIncludePath" /Fe"$TestExePath" /Fo"$ObjDir\\" "$SrcPpu" "$SrcAudio" "$SrcAssets" "$SrcSystem" "$SrcGame" $TestSourcesStr winmm.lib
+cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /I "$TestIncludePath" /Fe"$TestExePath" /Fo"$ObjDir\\" "$SrcPpu" "$SrcAudio" "$SrcAssets" "$SrcIntro" "$SrcSystem" "$SrcGame" $TestSourcesStr winmm.lib
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 
 echo Compiling mf95.exe (Interactive Application with CLI Console)...
-cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /Fe"$GameExePath" /Fo"$ObjDir\\" "$SrcMain" "$SrcPpu" "$SrcAudio" "$SrcAssets" "$SrcSystem" "$SrcGame" user32.lib gdi32.lib winmm.lib /link /SUBSYSTEM:CONSOLE
+cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /Fe"$GameExePath" /Fo"$ObjDir\\" "$SrcMain" "$SrcPpu" "$SrcAudio" "$SrcAssets" "$SrcIntro" "$SrcSystem" "$SrcGame" user32.lib gdi32.lib winmm.lib /link /SUBSYSTEM:CONSOLE
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 
 "@

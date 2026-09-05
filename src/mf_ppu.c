@@ -372,6 +372,7 @@ void mf_ppu_render_scanline(mf_ppu_t *ppu, int y) {
 
 void mf_ppu_render_frame(mf_ppu_t *ppu) {
     if (!ppu) return;
+    if (ppu->framebuffer_override) return;
     for (int y = 0; y < MF_SCREEN_HEIGHT; ++y) {
         mf_ppu_render_scanline(ppu, y);
     }
