@@ -121,6 +121,24 @@ def extract_assets(rom_path, output_pak, raw_dir=None):
         "desc": "Main Menu Audio Track 0x4A37 & APU Sequence Stream"
     })
 
+    # 7. Main Menu UI Palette ($CA:FB10, 32 bytes)
+    menu_ui_pal = base_data[0x0AFB10:0x0AFB10 + 32]
+    assets.append({
+        "name": "menu_palette_ui",
+        "type": TYPE_PALETTE,
+        "data": menu_ui_pal,
+        "desc": "Main Menu UI Color Palette ($CA:FB10, 32 bytes)"
+    })
+
+    # 8. Main Menu Backdrop Gradient Palette ($C9:D530, 32 bytes)
+    menu_grad_pal = base_data[0x09D530:0x09D530 + 32]
+    assets.append({
+        "name": "menu_palette_gradient",
+        "type": TYPE_PALETTE,
+        "data": menu_grad_pal,
+        "desc": "Main Menu Backdrop Gradient Color Palette ($C9:D530, 32 bytes)"
+    })
+
     # Build Asset Pack Binary
     os.makedirs(os.path.dirname(os.path.abspath(output_pak)), exist_ok=True)
 

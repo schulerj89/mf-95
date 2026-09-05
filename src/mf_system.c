@@ -1,5 +1,6 @@
 #include "mf_system.h"
 #include "mf_game.h"
+#include "mf_assets.h"
 #include <string.h>
 
 /*
@@ -558,6 +559,117 @@ void sub_c14de2_title_screen(struct mf_game *game) {
     game->state = MF_GAME_STATE_MENU;
     game->ready_for_jump = true;
 }
+
+/*
+ * Subroutine: sub_c15467_main_menu
+ * Bank:       $C1
+ * Address:    $C1:5467
+ * File Offset: 0x015467
+ * Description: Primary game mode 2 handler (Main Menu scene). Clears display registers,
+ *              queues menu theme audio track ($4A37), loads menu UI palette ($CA:FB10)
+ *              and gradient ramp ($C9:D530), sets color math registers ($2130, $212D, $2131),
+ *              allocates direct page workspace buffers ($53, $55, $57, $59), resets cursor
+ *              selection index ($BF = 0), sets sub-mode ($1EF4 = 0x0003), and prepares for
+ *              menu option selection ($C1:55AE).
+ */
+void sub_c15467_main_menu(struct mf_game *game) {
+    if (!game) return;
+
+    /* Menu UI Palette from Bank $CA:FB10 (32 bytes) */
+    static const uint8_t s_menu_palette_ui[32] = {
+        0x00, 0x00, 0xDE, 0x7B, 0x7B, 0x7B, 0x18, 0x6F, 0x73, 0x5E, 0xD5, 0x6A, 0xEE, 0x4D, 0xCE, 0x39,
+        0x6B, 0x45, 0x6B, 0x2D, 0x29, 0x39, 0xC6, 0x28, 0xC6, 0x18, 0x86, 0x38, 0x23, 0x1C, 0x00, 0x00
+    };
+
+    /* Menu Backdrop Gradient Palette from Bank $C9:D530 (32 bytes) */
+    static const uint8_t s_menu_palette_gradient[32] = {
+        0x00, 0x00, 0x00, 0x00, 0x63, 0x0C, 0x84, 0x10, 0xC6, 0x18, 0x08, 0x21, 0x6B, 0x2D, 0xAD, 0x35,
+        0xEF, 0x3D, 0x31, 0x46, 0x94, 0x52, 0xD6, 0x5A, 0x18, 0x63, 0x7B, 0x6F, 0xBD, 0x77, 0xFF, 0x7F
+    };
+
+    /* Step 1: Reset video mode and unblank screen for menu display */
+    game->ppu.forced_blank = false;
+    game->ppu.brightness = 0x0F;
+
+    /* Step 2: Queue Main Menu music theme ($4A37) via audio command registers */
+    game->wram[0x05A7] = 0x37;
+    game->wram[0x05A8] = 0x4A;
+    game->apu_ports[0] = 0x37;
+    game->apu_ports[1] = 0x4A;
+
+    /* Step 3: Initialize controllers and input buffers */
+    sub_c10463_init_controllers(game);
+
+    /* Step 4: Reset cursor position and selection index ($00BF = 0: Exhibition Game) */
+    game->wram[0x00BF] = 0x00;
+    game->wram[0x00C0] = 0x00;
+
+    /* Step 5: Direct page dynamic buffer allocation ($53, $55, $57, $59 from $DA) */
+    uint16_t da = (uint16_t)(game->wram[0x00DA] | (game->wram[0x00DB] << 8));
+    if (da == 0) {
+        da = 0x4F0C;
+    }
+    uint16_t p53 = da;
+    uint16_t p55 = p53 + 0x0040;
+    uint16_t p57 = p55 + 0x0180;
+    uint16_t p59 = p57 + 0x00C0;
+    da = p59 + 0x0480;
+
+    game->wram[0x0053] = (uint8_t)(p53 & 0xFF);
+    game->wram[0x0054] = (uint8_t)(p53 >> 8);
+    game->wram[0x0055] = (uint8_t)(p55 & 0xFF);
+    game->wram[0x0056] = (uint8_t)(p55 >> 8);
+    game->wram[0x0057] = (uint8_t)(p57 & 0xFF);
+    game->wram[0x0058] = (uint8_t)(p57 >> 8);
+    game->wram[0x0059] = (uint8_t)(p59 & 0xFF);
+    game->wram[0x005A] = (uint8_t)(p59 >> 8);
+    game->wram[0x00DA] = (uint8_t)(da & 0xFF);
+    game->wram[0x00DB] = (uint8_t)(da >> 8);
+    game->wram[0x0545] = (uint8_t)(da & 0xFF);
+    game->wram[0x0546] = (uint8_t)(da >> 8);
+
+    /* Step 6: Frame counter / timeout initialized to 60 frames (1 second) ($41 = 0x003C) */
+    game->wram[0x0041] = 0x3C;
+    game->wram[0x0042] = 0x00;
+
+    /* Step 7: Load palettes into CGRAM and work RAM (using pack assets if available, or static fallback) */
+    const uint8_t *ui_pal = s_menu_palette_ui;
+    const uint8_t *grad_pal = s_menu_palette_gradient;
+
+    uint32_t ui_size = 0;
+    const uint8_t *ui_asset = (const uint8_t *)mf_assets_find(&game->assets, "menu_palette_ui", &ui_size);
+    if (ui_asset && ui_size >= 32) {
+        ui_pal = ui_asset;
+    }
+
+    uint32_t grad_size = 0;
+    const uint8_t *grad_asset = (const uint8_t *)mf_assets_find(&game->assets, "menu_palette_gradient", &grad_size);
+    if (grad_asset && grad_size >= 32) {
+        grad_pal = grad_asset;
+    }
+
+
+    /* Copy palettes into work RAM buffers and write to CGRAM */
+    if (p57 + 32 <= MF_WRAM_SIZE) {
+        memcpy(&game->wram[p57], ui_pal, 32);
+    }
+    if (p55 + 32 <= MF_WRAM_SIZE) {
+        memcpy(&game->wram[p55], grad_pal, 32);
+    }
+    mf_ppu_write_cgram(&game->ppu, 0x0020, ui_pal, 32);
+    mf_ppu_write_cgram(&game->ppu, 0x0000, grad_pal, 32);
+
+    /* Step 8: Set sub-mode status register ($1EF4 = 0x0003: Main Menu Scene Active) */
+    game->wram[0x1EF4] = 0x03;
+    game->wram[0x1EF5] = 0x00;
+
+    /* Step 9: Update execution tracking and prepare for option selection */
+    game->current_pc = MF_SNES_ADDR_MAIN_MENU;
+    game->next_pc = MF_SNES_ADDR_MENU_SELECT;
+    game->state = MF_GAME_STATE_MENU;
+    game->ready_for_jump = true;
+}
+
 
 
 

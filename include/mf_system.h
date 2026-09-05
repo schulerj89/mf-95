@@ -170,4 +170,29 @@ void sub_c0cb9c_boot_tables(struct mf_game *game);
  */
 void sub_c14de2_title_screen(struct mf_game *game);
 
+/*
+ * Subroutine: sub_c15467_main_menu
+ * Bank:       $C1
+ * Address:    $C1:5467
+ * File Offset: 0x015467
+ * Description: Primary game mode 2 handler (Main Menu scene). Clears display registers,
+ *              queues menu theme audio track ($4A37), loads menu UI palette ($CA:FB10)
+ *              and gradient ramp ($C9:D530), sets color math registers ($2130, $212D, $2131),
+ *              allocates direct page workspace buffers ($53, $55, $57, $59), resets cursor
+ *              selection index ($BF = 0), sets sub-mode ($1EF4 = 0x0003), and prepares for
+ *              menu option selection ($C1:55AE).
+ */
+void sub_c15467_main_menu(struct mf_game *game);
+
+/*
+ * Subroutine: sub_c155ae_menu_select (Next Target)
+ * Bank:       $C1
+ * Address:    $C1:55AE
+ * File Offset: 0x0155AE
+ * Description: Main Menu Option Selection & Dispatch handler (sub-mode 4, parses active menu
+ *              cursor $BF, configures game mode parameters $5751, and dispatches to selected mode).
+ */
+void sub_c155ae_menu_select(struct mf_game *game);
+
 #endif /* MF_SYSTEM_H */
+

@@ -50,19 +50,21 @@ void mf_boot_reset(mf_game_t *game) {
 }
 
 /*
- * Subroutine: sub_c15467_main_menu (Placeholder / Next Target)
+ * Subroutine: sub_c155ae_menu_select (Placeholder / Next Target)
  * Bank:       $C1
- * Address:    $C1:5467
- * File Offset: 0x015467
- * Description: Primary game mode 2 handler: Main menu and game mode selection.
+ * Address:    $C1:55AE
+ * File Offset: 0x0155AE
+ * Description: Main Menu Option Selection & Dispatch handler (sub-mode 4, parses active menu
+ *              cursor $BF, configures game mode parameters $5751, and dispatches to selected mode).
  */
-void sub_c15467_main_menu(mf_game_t *game) {
+void sub_c155ae_menu_select(mf_game_t *game) {
     if (!game) return;
     /* Placeholder for next target */
-    game->current_pc = MF_SNES_ADDR_MAIN_MENU;
-    game->state = MF_GAME_STATE_MENU;
+    game->current_pc = MF_SNES_ADDR_MENU_SELECT;
+    game->state = MF_GAME_STATE_GAMEPLAY;
     game->ready_for_jump = false;
 }
+
 
 
 
