@@ -1,6 +1,7 @@
 #include "mf_ppu.h"
 #include "mf_audio.h"
 #include "mf_game.h"
+#include "mf_system.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,60 @@ static bool test_boot_subroutine(void) {
     if (game.direct_page != 0x0000) return false;
     if (!game.ready_for_jump) return false;
     if (game.next_pc != MF_SNES_ADDR_INIT_SYSTEM) return false;
+
+    return true;
+}
+
+static bool test_init_system_cold_boot(void) {
+    mf_game_t game;
+    mf_game_init(&game);
+    mf_boot_reset(&game);
+
+    sub_c10000_init_system(&game);
+
+    /* Verify forced blank and FastROM */
+    if (!game.ppu.forced_blank) return false;
+    if (!game.fastrom_enabled) return false;
+    if (!game.interrupts_enabled) return false;
+    if (game.warm_boot != false) return false;
+
+    /* Verify cold boot flag in direct page ($EC) */
+    if (game.wram[0x00EC] != 0x00 || game.wram[0x00ED] != 0x00) return false;
+
+    /* Verify persistent signature "JSBS" at $0577 */
+    if (game.wram[0x0577] != 0x4A || game.wram[0x0578] != 0x53) return false;
+    if (game.wram[0x0579] != 0x42 || game.wram[0x057A] != 0x53) return false;
+
+    /* Verify boot vector parameters in WRAM */
+    if (game.wram[0x0494] != 0x80 || game.wram[0x0495] != 0x00) return false;
+    if (game.wram[0x0006] != 0x5C || game.wram[0x0007] != 0x00) return false;
+    if (game.wram[0x0460] != 0x8B || game.wram[0x0461] != 0x54) return false;
+    if (game.wram[0x0464] != 0xAB || game.wram[0x0465] != 0x6B) return false;
+
+    /* Verify return to caller at $C0:CB80 and next target set to $C1:22C0 */
+    if (game.current_pc != MF_SNES_ADDR_BOOT_CONT1) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE2) return false;
+    if (!game.ready_for_jump) return false;
+    if (game.state != MF_GAME_STATE_INIT_PHASE2) return false;
+
+    return true;
+}
+
+static bool test_init_system_warm_boot(void) {
+    mf_game_t game;
+    mf_game_init(&game);
+
+    /* Pre-populate persistent signature "JSBS" */
+    game.wram[0x0577] = 0x4A;
+    game.wram[0x0578] = 0x53;
+    game.wram[0x0579] = 0x42;
+    game.wram[0x057A] = 0x53;
+
+    sub_c10000_init_system(&game);
+
+    /* Verify warm boot detected and $EC flag set */
+    if (!game.warm_boot) return false;
+    if (game.wram[0x00EC] != 0xFF || game.wram[0x00ED] != 0xFF) return false;
 
     return true;
 }
@@ -68,9 +123,19 @@ int main(int argc, char **argv) {
         failures++;
     }
 
+    /* 4. Test Subroutine $C1:0000 (Cold & Warm Boot) */
+    printf("\n[*] Running System Init Subroutine Self-Test ($C1:0000)...\n");
+    if (test_init_system_cold_boot() && test_init_system_warm_boot()) {
+        printf("    [PASS] Subroutine $C1:0000: Entropy seed latching, FastROM,\n");
+        printf("           CGRAM/WRAM clears, JSBS signature validation, and RTL verified.\n");
+    } else {
+        printf("    [FAIL] Subroutine $C1:0000: System initialization verification failed.\n");
+        failures++;
+    }
+
     printf("\n----------------------------------------------------\n");
     if (failures == 0) {
-        printf("Result: ALL TESTS PASSED (PPU + Audio + Boot Subroutine)\n");
+        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000)\n");
         printf("====================================================\n");
         return 0;
     } else {

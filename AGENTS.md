@@ -26,27 +26,38 @@ This repository contains the C port and decompilation project for **Madden NFL '
 
 ---
 
-## Architecture & Project Objectives
+## Standardized Function Comment Format
 
-- **Primary Goal**: High-fidelity, modular C port and decompilation of Madden NFL '95.
-- **Engine Components**:
-  - **Core Logic & Simulation**: Football physics, player locomotion, AI decision tree, play execution, collision detection, and referee rules.
-  - **Hardware Abstraction Layer (HAL)**: Clean separation between platform rendering (SDL2 / Direct3D / OpenGL), audio synthesis/playback, and input controllers.
-  - **State Representation**: Explicit data structures for team rosters, player attributes, formations, playbooks, and game clock state.
-  - **Verification / Oracle**: Comparison against original cycle/state behavior for byte-accurate verification where possible.
+Every converted or scaffolded subroutine in C **must** include the following comment header:
+
+```c
+/*
+ * Subroutine: <function_name>
+ * Bank:       $<bank_number>
+ * Address:    $<bank_number>:<snes_address>
+ * File Offset: 0x<hex_file_offset>
+ * Description: <Concise explanation of the routine's purpose, hardware registers,
+ *              memory state modified, and algorithmic behavior>
+ */
+```
+
+### Formatting Rules:
+- **Include**: Subroutine name, Bank, Address, File Offset (6-digit hex format, e.g. `0x010000`), and a clear functional description.
+- **DO NOT Include**: Raw opcode bytes (e.g., `9C 00 42`) or assembly instruction lines (e.g., `STZ $4200`) in comments.
+- **Conversion Cadence**: Convert and verify **one subroutine at a time**, locking each stage in with unit tests, commits, and pushes before advancing to the next.
 
 ---
 
-## Tooling & Verification Guidelines
+## Architectural Principles
 
-1. **Deterministic & Verifiable**:
-   - Verify logic against machine-derived facts from the original disassemblies/memory maps rather than guessing constants or magic numbers.
-   - Document any reverse-engineered routines with comments describing the original function address, register usage, and algorithmic intent.
+1. **Lightweight Main Game Loop**:
+   - Keep the top-level game loop and state dispatcher extremely lightweight.
+   - Subsystem modules and include headers (`mf_ppu.h`, `mf_audio.h`, `mf_system.h`) do the heavy lifting.
+   - Separate hardware abstraction, memory clearing, register state management, and simulation logic into clear modular components.
 
-2. **Asset Extraction Tools**:
-   - Any scripts that unpack or decode graphics/audio from the ROM or asset packs belong under `tools/`.
-   - Always verify that tool outputs go to gitignored folders (such as `assets/` or `dist/assets/`).
+2. **Deterministic & Verifiable**:
+   - Verify logic against machine-derived facts from the original disassemblies and memory maps.
+   - Maintain unit tests in `tests/` covering state changes, registers, and return paths for every converted routine.
 
 3. **Build System**:
-   - Standard MSVC / CMake / Ninja build pipelines.
-   - Dev builds should support debug telemetry and memory inspection.
+   - MSVC / CMake build pipelines. Run `build.ps1` or `build-msvc.cmd` to compile and verify all tests before committing.

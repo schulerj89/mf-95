@@ -47,16 +47,16 @@ void mf_boot_reset(mf_game_t *game) {
 }
 
 /*
- * Subroutine: sub_c10000_init_system (Placeholder / Next Target)
+ * Subroutine: sub_c122c0_init_phase2 (Placeholder / Next Target)
  * Bank:       $C1
- * Address:    $C1:0000
- * File Offset: 0x010000
- * Description: First system initialization routine called after cold boot.
+ * Address:    $C1:22C0
+ * File Offset: 0x0122C0
+ * Description: Second system initialization routine called after sub_c10000 returns.
  */
-void sub_c10000_init_system(mf_game_t *game) {
+void sub_c122c0_init_phase2(mf_game_t *game) {
     if (!game) return;
-    /* Placeholder - to be lifted in the next step */
-    game->current_pc = MF_SNES_ADDR_INIT_SYSTEM;
-    game->state = MF_GAME_STATE_INIT_SYSTEM;
+    /* Placeholder for next target */
+    game->current_pc = MF_SNES_ADDR_INIT_PHASE2;
+    game->state = MF_GAME_STATE_INIT_PHASE2;
     game->ready_for_jump = false;
 }

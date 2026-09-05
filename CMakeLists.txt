@@ -9,6 +9,7 @@ include_directories(include)
 set(MF95_SOURCES
     src/mf_ppu.c
     src/mf_audio.c
+    src/mf_system.c
     src/mf_game.c
 )
 
@@ -16,6 +17,7 @@ set(MF95_HEADERS
     include/mf_types.h
     include/mf_ppu.h
     include/mf_audio.h
+    include/mf_system.h
     include/mf_game.h
 )
 
