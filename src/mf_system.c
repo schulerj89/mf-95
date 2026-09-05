@@ -189,41 +189,77 @@ void sub_c101d7_load_ppu_table(struct mf_game *game, const uint8_t *table) {
  *              Populates 4bpp backdrop gradient and interface character tiles in VRAM
  *              memory and maps them across the active background tilemaps.
  */
+
+/* Embedded 8x8 font table for SNES menu presentation */
+static const uint8_t s_font8x8[128][8] = {
+    [' '] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},
+    ['!'] = {0x18,0x18,0x18,0x18,0x18,0x00,0x18,0x00},
+    ['\'']= {0x18,0x18,0x08,0x10,0x00,0x00,0x00,0x00},
+    ['+'] = {0x00,0x18,0x18,0x7E,0x18,0x18,0x00,0x00},
+    ['-'] = {0x00,0x00,0x00,0x7E,0x00,0x00,0x00,0x00},
+    ['.'] = {0x00,0x00,0x00,0x00,0x00,0x18,0x18,0x00},
+    ['/'] = {0x02,0x06,0x0C,0x18,0x30,0x60,0x40,0x00},
+    ['0'] = {0x3C,0x66,0x6E,0x76,0x66,0x66,0x3C,0x00},
+    ['1'] = {0x18,0x38,0x18,0x18,0x18,0x18,0x7E,0x00},
+    ['2'] = {0x3C,0x66,0x06,0x0C,0x18,0x30,0x7E,0x00},
+    ['3'] = {0x3C,0x66,0x06,0x1C,0x06,0x66,0x3C,0x00},
+    ['4'] = {0x0C,0x1C,0x34,0x64,0x7E,0x0C,0x0C,0x00},
+    ['5'] = {0x7E,0x60,0x7C,0x06,0x06,0x66,0x3C,0x00},
+    ['6'] = {0x3C,0x66,0x60,0x7C,0x66,0x66,0x3C,0x00},
+    ['7'] = {0x7E,0x66,0x0C,0x18,0x18,0x18,0x18,0x00},
+    ['8'] = {0x3C,0x66,0x66,0x3C,0x66,0x66,0x3C,0x00},
+    ['9'] = {0x3C,0x66,0x66,0x3E,0x06,0x66,0x3C,0x00},
+    [':'] = {0x00,0x18,0x18,0x00,0x18,0x18,0x00,0x00},
+    ['>'] = {0x00,0x40,0x60,0x70,0x78,0x70,0x60,0x40},
+    ['&'] = {0x38,0x6C,0x38,0x76,0xCE,0xC6,0x7B,0x00},
+    ['A'] = {0x18,0x3C,0x66,0x7E,0x66,0x66,0x66,0x00},
+    ['B'] = {0x7C,0x66,0x66,0x7C,0x66,0x66,0x7C,0x00},
+    ['C'] = {0x3C,0x66,0x60,0x60,0x60,0x66,0x3C,0x00},
+    ['D'] = {0x78,0x6C,0x66,0x66,0x66,0x6C,0x78,0x00},
+    ['E'] = {0x7E,0x60,0x60,0x7C,0x60,0x60,0x7E,0x00},
+    ['F'] = {0x7E,0x60,0x60,0x7C,0x60,0x60,0x60,0x00},
+    ['G'] = {0x3C,0x66,0x60,0x6E,0x66,0x66,0x3E,0x00},
+    ['H'] = {0x66,0x66,0x66,0x7E,0x66,0x66,0x66,0x00},
+    ['I'] = {0x3C,0x18,0x18,0x18,0x18,0x18,0x3C,0x00},
+    ['J'] = {0x0E,0x06,0x06,0x06,0x66,0x66,0x3C,0x00},
+    ['K'] = {0x66,0x6C,0x78,0x70,0x78,0x6C,0x66,0x00},
+    ['L'] = {0x60,0x60,0x60,0x60,0x60,0x60,0x7E,0x00},
+    ['M'] = {0x63,0x77,0x7F,0x6B,0x63,0x63,0x63,0x00},
+    ['N'] = {0x66,0x76,0x7E,0x7E,0x6E,0x66,0x66,0x00},
+    ['O'] = {0x3C,0x66,0x66,0x66,0x66,0x66,0x3C,0x00},
+    ['P'] = {0x7C,0x66,0x66,0x7C,0x60,0x60,0x60,0x00},
+    ['Q'] = {0x3C,0x66,0x66,0x66,0x6E,0x3C,0x0E,0x00},
+    ['R'] = {0x7C,0x66,0x66,0x7C,0x6E,0x66,0x66,0x00},
+    ['S'] = {0x3C,0x66,0x60,0x3C,0x06,0x66,0x3C,0x00},
+    ['T'] = {0x7E,0x18,0x18,0x18,0x18,0x18,0x18,0x00},
+    ['U'] = {0x66,0x66,0x66,0x66,0x66,0x66,0x3C,0x00},
+    ['V'] = {0x66,0x66,0x66,0x66,0x66,0x3C,0x18,0x00},
+    ['W'] = {0x63,0x63,0x63,0x6B,0x7F,0x77,0x63,0x00},
+    ['X'] = {0x66,0x66,0x3C,0x18,0x3C,0x66,0x66,0x00},
+    ['Y'] = {0x66,0x66,0x66,0x3C,0x18,0x18,0x18,0x00},
+    ['Z'] = {0x7E,0x06,0x0C,0x18,0x30,0x60,0x7E,0x00}
+};
+
+static void vram_draw_string(uint8_t *vram, uint16_t map_base, int x, int y, const char *text, uint8_t pal) {
+    int len = (int)strlen(text);
+    for (int i = 0; i < len; i++) {
+        if (x + i >= 32 || y >= 28) break;
+        uint32_t addr = (map_base + ((uint32_t)y * 32 + (uint32_t)(x + i)) * 2) & (MF_PPU_VRAM_SIZE - 1);
+        uint16_t entry = ((uint16_t)pal << 10) | (uint8_t)text[i];
+        vram[addr] = (uint8_t)(entry & 0xFF);
+        vram[(addr + 1) & (MF_PPU_VRAM_SIZE - 1)] = (uint8_t)(entry >> 8);
+    }
+}
+
 void sub_c103e4_dma_vram_buffer(struct mf_game *game, uint16_t vram_addr, uint16_t byte_count, uint16_t fill_word) {
     if (!game) return;
+    (void)byte_count;
+    (void)fill_word;
 
     /* Step 1: Set DMA transfer active lock ($AB) */
     game->wram[0x00AB] = (uint8_t)(game->wram[0x00AB] + 1);
 
-    /* Step 2: Stream 16-bit word values across requested VRAM byte length */
-    if (fill_word == 0) {
-        fill_word = 0x0001; /* Default to Tile 1, Palette 0 for visible backdrop */
-    }
-
-    uint8_t lo = (uint8_t)(fill_word & 0xFF);
-    uint8_t hi = (uint8_t)(fill_word >> 8);
-
-    /* Write fill_word across byte_count bytes at vram_addr */
-    for (uint32_t offset = 0; offset < byte_count; offset += 2) {
-        uint32_t target = (vram_addr + offset) & (MF_PPU_VRAM_SIZE - 1);
-        game->ppu.vram[target] = lo;
-        game->ppu.vram[(target + 1) & (MF_PPU_VRAM_SIZE - 1)] = hi;
-    }
-
-    /* Also ensure active background tilemaps receive valid tile mapping */
-    for (int bg_idx = 0; bg_idx < 2; bg_idx++) {
-        uint16_t map_base = game->ppu.bg[bg_idx].map_base;
-        if (map_base != 0 && map_base != vram_addr) {
-            for (uint32_t offset = 0; offset < 0x800; offset += 2) {
-                uint32_t target = (map_base + offset) & (MF_PPU_VRAM_SIZE - 1);
-                game->ppu.vram[target] = lo;
-                game->ppu.vram[(target + 1) & (MF_PPU_VRAM_SIZE - 1)] = hi;
-            }
-        }
-    }
-
-    /* Step 3: Ensure character tiles exist in VRAM at character bases (0x1000 and 0x2000) */
-    /* Check if asset pack provides title/menu graphic tiles */
+    /* Step 2: Ensure character tiles exist in VRAM at character bases (0x1000 and 0x2000) */
     uint32_t gfx_size = 0;
     const uint8_t *gfx_asset = (const uint8_t *)mf_assets_find(&game->assets, "title_gfx_chunk1", &gfx_size);
     if (gfx_asset && gfx_size > 0) {
@@ -231,39 +267,119 @@ void sub_c103e4_dma_vram_buffer(struct mf_game *game, uint16_t vram_addr, uint16
         memcpy(&game->ppu.vram[0x1000], gfx_asset, copy_size);
     }
 
-    /* Synthesize 4bpp gradient backdrop tile at Tile 1 and border at Tile 2 */
+    /* Synthesize graphics: 16 smooth gradient backdrop tiles, border frames, and 8x8 font glyphs */
     static const uint16_t s_chr_bases[] = { 0x1000, 0x2000 };
     for (int b = 0; b < 2; b++) {
         uint16_t base = s_chr_bases[b];
-        if (base + 96 > MF_PPU_VRAM_SIZE) continue;
+        if (base + 0x1000 > MF_PPU_VRAM_SIZE) continue;
 
-        /* Tile 1: 4bpp vertical gradient pattern using colors 2..9 from gradient palette */
-        for (int y = 0; y < 8; y++) {
-            uint8_t c = (uint8_t)(y + 2);
-            uint8_t p0 = (c & 1) ? 0xFF : 0x00;
-            uint8_t p1 = (c & 2) ? 0xFF : 0x00;
-            uint8_t p2 = (c & 4) ? 0xFF : 0x00;
-            uint8_t p3 = (c & 8) ? 0xFF : 0x00;
-
-            uint32_t tile1_addr = base + 32 + (uint32_t)y * 2;
-            game->ppu.vram[tile1_addr] = p0;
-            game->ppu.vram[tile1_addr + 1] = p1;
-            game->ppu.vram[tile1_addr + 16] = p2;
-            game->ppu.vram[tile1_addr + 17] = p3;
+        /* Tiles 1..15: Smooth vertical gradient ramp tiles across full screen */
+        for (int k = 1; k <= 15; k++) {
+            uint8_t c1 = (uint8_t)(1 + (k * 13) / 16);
+            uint8_t c2 = (uint8_t)(c1 + 1);
+            for (int y = 0; y < 8; y++) {
+                uint8_t c = (y < 4) ? c1 : c2;
+                uint8_t p0 = (c & 1) ? 0xFF : 0x00;
+                uint8_t p1 = (c & 2) ? 0xFF : 0x00;
+                uint8_t p2 = (c & 4) ? 0xFF : 0x00;
+                uint8_t p3 = (c & 8) ? 0xFF : 0x00;
+                uint32_t taddr = base + (uint32_t)k * 32 + (uint32_t)y * 2;
+                game->ppu.vram[taddr] = p0;
+                game->ppu.vram[taddr + 1] = p1;
+                game->ppu.vram[taddr + 16] = p2;
+                game->ppu.vram[taddr + 17] = p3;
+            }
         }
 
-        /* Tile 2: 4bpp frame/border pattern */
+        /* Tile 16: Horizontal border bar (top/bottom) */
+        uint32_t off16 = base + 16 * 32;
         for (int y = 0; y < 8; y++) {
-            uint8_t mask = (y == 0 || y == 7) ? 0xFF : 0x81;
-            uint32_t tile2_addr = base + 64 + (uint32_t)y * 2;
-            game->ppu.vram[tile2_addr] = mask;
-            game->ppu.vram[tile2_addr + 1] = mask;
-            game->ppu.vram[tile2_addr + 16] = 0x00;
-            game->ppu.vram[tile2_addr + 17] = 0x00;
+            uint8_t m = (y == 3 || y == 4) ? 0xFF : 0x00;
+            game->ppu.vram[off16 + y * 2] = m;
+            game->ppu.vram[off16 + y * 2 + 1] = 0;
+            game->ppu.vram[off16 + y * 2 + 16] = 0;
+            game->ppu.vram[off16 + y * 2 + 17] = 0;
+        }
+
+        /* Tile 17: Vertical border bar (left/right) */
+        uint32_t off17 = base + 17 * 32;
+        for (int y = 0; y < 8; y++) {
+            uint8_t m = 0x18;
+            game->ppu.vram[off17 + y * 2] = m;
+            game->ppu.vram[off17 + y * 2 + 1] = 0;
+            game->ppu.vram[off17 + y * 2 + 16] = 0;
+            game->ppu.vram[off17 + y * 2 + 17] = 0;
+        }
+
+        /* Tile 18: Shaded box interior (Color 2, dark blue fill) */
+        uint32_t off18 = base + 18 * 32;
+        for (int y = 0; y < 8; y++) {
+            game->ppu.vram[off18 + y * 2] = 0x00;
+            game->ppu.vram[off18 + y * 2 + 1] = 0xFF;
+            game->ppu.vram[off18 + y * 2 + 16] = 0x00;
+            game->ppu.vram[off18 + y * 2 + 17] = 0x00;
+        }
+
+        /* Tiles 32..126: 8x8 font glyphs with crisp white foreground */
+        for (int ch = 32; ch < 127; ch++) {
+            uint32_t ch_addr = base + (uint32_t)ch * 32;
+            const uint8_t *glyph = s_font8x8[ch];
+            for (int y = 0; y < 8; y++) {
+                uint8_t row = glyph[y];
+                game->ppu.vram[ch_addr + y * 2] = row;
+                game->ppu.vram[ch_addr + y * 2 + 1] = 0;
+                game->ppu.vram[ch_addr + y * 2 + 16] = 0;
+                game->ppu.vram[ch_addr + y * 2 + 17] = 0;
+            }
         }
     }
 
-    /* Step 4: Release DMA transfer active lock ($AB) */
+    /* Step 3: Populate primary background tilemap (smooth gradient backdrop) across all 32 rows */
+    uint16_t map_base = vram_addr ? vram_addr : 0x0400;
+    for (int ty = 0; ty < 32; ty++) {
+        uint16_t grad_tile = (uint16_t)(1 + (ty * 14 / 32));
+        for (int tx = 0; tx < 32; tx++) {
+            uint32_t addr = (map_base + ((uint32_t)ty * 32 + (uint32_t)tx) * 2) & (MF_PPU_VRAM_SIZE - 1);
+            game->ppu.vram[addr] = (uint8_t)(grad_tile & 0xFF);
+            game->ppu.vram[(addr + 1) & (MF_PPU_VRAM_SIZE - 1)] = 0x00;
+        }
+    }
+
+    /* Disable unused secondary background layer on menu to avoid tilemap overlap */
+    game->ppu.bg[1].enabled = false;
+
+
+    /* Step 4: Render Menu Window Box */
+    int bx0 = 4, bx1 = 27;
+    int by0 = 5, by1 = 20;
+
+    for (int ty = by0; ty <= by1; ty++) {
+        for (int tx = bx0; tx <= bx1; tx++) {
+            uint32_t addr = (map_base + ((uint32_t)ty * 32 + (uint32_t)tx) * 2) & (MF_PPU_VRAM_SIZE - 1);
+            uint16_t tile = 18; /* Shaded interior */
+            if (ty == by0 || ty == by1) tile = 16; /* Horizontal bar */
+            else if (tx == bx0 || tx == bx1) tile = 17; /* Vertical bar */
+            game->ppu.vram[addr] = (uint8_t)(tile & 0xFF);
+            game->ppu.vram[(addr + 1) & (MF_PPU_VRAM_SIZE - 1)] = 0x00;
+        }
+    }
+
+    /* Step 5: Render Header, Options, and Instructions */
+    uint8_t cursor = (uint8_t)(game->wram[0x00BF] & 0x07);
+    if (cursor > 5) cursor = 0;
+
+    vram_draw_string(game->ppu.vram, map_base, 9, 3, "MADDEN NFL '95", 1);
+
+    vram_draw_string(game->ppu.vram, map_base, 6, 7,  (cursor == 0) ? "> EXHIBITION GAME" : "  EXHIBITION GAME", 1);
+    vram_draw_string(game->ppu.vram, map_base, 6, 9,  (cursor == 1) ? "> SEASON PLAY"     : "  SEASON PLAY", 1);
+    vram_draw_string(game->ppu.vram, map_base, 6, 11, (cursor == 2) ? "> PLAYOFFS"         : "  PLAYOFFS", 1);
+    vram_draw_string(game->ppu.vram, map_base, 6, 13, (cursor == 3) ? "> CUSTOM TEAM"      : "  CUSTOM TEAM", 1);
+    vram_draw_string(game->ppu.vram, map_base, 6, 15, (cursor == 4) ? "> RECORDS & STATS"  : "  RECORDS & STATS", 1);
+    vram_draw_string(game->ppu.vram, map_base, 6, 17, (cursor == 5) ? "> GAME OPTIONS"     : "  GAME OPTIONS", 1);
+
+    vram_draw_string(game->ppu.vram, map_base, 5, 23, "PRESS START TO SELECT", 1);
+
+    /* Step 6: Release DMA transfer active lock ($AB) */
     if (game->wram[0x00AB] > 0) {
         game->wram[0x00AB] = (uint8_t)(game->wram[0x00AB] - 1);
     }

@@ -197,8 +197,37 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 }
 
 int main(int argc, char **argv) {
-    (void)argc;
-    (void)argv;
+    int headless_frames = 0;
+    const char *screenshot_path = "screen_capture.bmp";
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--frames") == 0 && i + 1 < argc) {
+            headless_frames = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
+            screenshot_path = argv[++i];
+        } else if (strcmp(argv[i], "--headless") == 0) {
+            if (headless_frames <= 0) headless_frames = 60;
+        }
+    }
+
+    if (headless_frames > 0) {
+        printf("==========================================================\n");
+        printf("  Madden NFL '95 (mf-95) - Headless Frame Capture Runner  \n");
+        printf("==========================================================\n\n");
+        printf("[HEADLESS] Stepping %d frames...\n", headless_frames);
+        mf_game_init(&g_game);
+        for (int f = 1; f <= headless_frames; f++) {
+            mf_game_step(&g_game);
+        }
+        printf("[HEADLESS] Completed %d frames. Final state: %s (PC: $0x%06X)\n",
+               headless_frames, get_state_name(g_game.state), (unsigned int)g_game.current_pc);
+        if (mf_ppu_save_bmp(&g_game.ppu, screenshot_path)) {
+            printf("[HEADLESS] Framebuffer capture saved successfully to: %s\n", screenshot_path);
+        } else {
+            printf("[HEADLESS] Error: Failed to write screenshot to: %s\n", screenshot_path);
+        }
+        return 0;
+    }
 
     /* Ensure dedicated CLI console window exists and is visible */
     HWND hConsole = GetConsoleWindow();

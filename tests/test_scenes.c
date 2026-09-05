@@ -130,11 +130,8 @@ static bool test_menu_select_subroutine(void) {
 
     /* Verify active option cursor ($BF = 0x0002) */
     if (game.wram[0x00BF] != 0x02 || game.wram[0x00C0] != 0x00) return false;
-
-    /* Verify selection frame delay ($41 = 60 frames) */
     if (game.wram[0x0041] != 0x3C || game.wram[0x0042] != 0x00) return false;
 
-    /* Verify direct page buffer allocations ($0F, $11, $DA) */
     uint16_t p0f = (uint16_t)(game.wram[0x000F] | (game.wram[0x0010] << 8));
     uint16_t p11 = (uint16_t)(game.wram[0x0011] | (game.wram[0x0012] << 8));
     uint16_t da  = (uint16_t)(game.wram[0x00DA] | (game.wram[0x00DB] << 8));
@@ -142,18 +139,14 @@ static bool test_menu_select_subroutine(void) {
     if (p11 != p0f + 0x0020) return false;
     if (da  != p11 + 0x00C0) return false;
 
-    /* Verify selection highlight palette loaded in CGRAM slot 0x0040 */
     if (game.ppu.cgram[0x0042] != 0xD6 || game.ppu.cgram[0x0043] != 0x7E) return false;
     if (game.ppu.cgram[0x0044] != 0x73 || game.ppu.cgram[0x0045] != 0x7A) return false;
 
-    /* Verify state trackers ($1C73 = 0x0700) */
     if (game.wram[0x1C73] != 0x00 || game.wram[0x1C74] != 0x07) return false;
 
-    /* Verify VRAM graphics tiles and tilemap populated by sub_c103e4 */
     if (game.ppu.vram[0x0400] != 0x01) return false;
-    if (game.ppu.vram[0x1021] == 0) return false;
+    if (game.ppu.vram[0x1020] == 0 && game.ppu.vram[0x1021] == 0) return false;
 
-    /* Verify transition to menu input poller task at $C1:5777 */
     if (game.current_pc != MF_SNES_ADDR_MENU_SELECT) return false;
     if (game.next_pc != MF_SNES_ADDR_MENU_POLL) return false;
     if (!game.ready_for_jump) return false;
