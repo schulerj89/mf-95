@@ -109,6 +109,45 @@ static bool test_init_phase2_subroutine(void) {
     return true;
 }
 
+static bool test_init_phase3_subroutine(void) {
+    mf_game_t game;
+    mf_game_init(&game);
+    mf_boot_reset(&game);
+    sub_c10000_init_system(&game);
+    sub_c122c0_init_phase2(&game);
+
+    if (game.state != MF_GAME_STATE_INIT_PHASE3) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE3) return false;
+
+    sub_c11823_init_phase3(&game);
+
+    /* Verify frame timer tick interval in $0DD7 */
+    if (game.wram[0x0DD7] != 0x0A || game.wram[0x0DD8] != 0x00) return false;
+
+    /* Verify cleared runtime counter $05B7 */
+    if (game.wram[0x05B7] != 0x00 || game.wram[0x05B8] != 0x00) return false;
+
+    /* Verify APU handshake acknowledged and command sent */
+    if (game.apu_ports[0] != 0x7F || game.apu_ports[3] != 0x7F) return false;
+
+    /* Verify channel masks initialized to 0xFFFF */
+    if (game.wram[0x05A7] != 0xFF || game.wram[0x05A8] != 0xFF) return false;
+    if (game.wram[0x05A9] != 0xFF || game.wram[0x05AA] != 0xFF) return false;
+    if (game.wram[0x05AB] != 0xFF || game.wram[0x05AC] != 0xFF) return false;
+
+    /* Verify channel status words cleared */
+    if (game.wram[0x05A3] != 0x00 || game.wram[0x05A4] != 0x00) return false;
+    if (game.wram[0x05A5] != 0x00 || game.wram[0x05A6] != 0x00) return false;
+
+    /* Verify return to $C0:CB88 and next target $C1:0966 */
+    if (game.current_pc != MF_SNES_ADDR_BOOT_CONT3) return false;
+    if (game.next_pc != MF_SNES_ADDR_INIT_PHASE4) return false;
+    if (!game.ready_for_jump) return false;
+    if (game.state != MF_GAME_STATE_INIT_PHASE4) return false;
+
+    return true;
+}
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -169,9 +208,20 @@ int main(int argc, char **argv) {
         failures++;
     }
 
+    /* 6. Test Subroutine $C1:1823 (Phase 3 Init) */
+    printf("\n[*] Running System Init Phase 3 Subroutine Self-Test ($C1:1823)...\n");
+    if (test_init_phase3_subroutine()) {
+        printf("    [PASS] Subroutine $C1:1823: Timer tick interval set ($0DD7 = 0x000A),\n");
+        printf("           APU handshake acknowledged ($2140 = 0x7F), channel masks initialized,\n");
+        printf("           and RTL return to $C0:CB88 verified.\n");
+    } else {
+        printf("    [FAIL] Subroutine $C1:1823: Phase 3 initialization verification failed.\n");
+        failures++;
+    }
+
     printf("\n----------------------------------------------------\n");
     if (failures == 0) {
-        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0)\n");
+        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823)\n");
         printf("====================================================\n");
         return 0;
     } else {

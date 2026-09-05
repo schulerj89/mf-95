@@ -126,3 +126,56 @@ void sub_c122c0_init_phase2(struct mf_game *game) {
     game->ready_for_jump = true;
 }
 
+/*
+ * Subroutine: sub_c11823_init_phase3
+ * Bank:       $C1
+ * Address:    $C1:1823
+ * File Offset: 0x011823
+ * Description: Third phase of system initialization called from the cold boot
+ *              dispatcher. Configures game frame timing ticks ($0DD7 = 0x000A),
+ *              clears runtime counter $05B7, initializes active channel masks
+ *              ($05A7, $05A9, $05AB = 0xFFFF), executes initial APU communication
+ *              handshake ($2140 = 0x7F after acknowledgement on $2143), clears
+ *              channel status words $05A3 and $05A5, and returns via RTL to the
+ *              boot caller at $C0:CB88.
+ */
+void sub_c11823_init_phase3(struct mf_game *game) {
+    if (!game) return;
+
+    /* Set frame timer tick interval to 10 (0x000A) in work RAM $0DD7 */
+    game->wram[0x0DD7] = 0x0A;
+    game->wram[0x0DD8] = 0x00;
+
+    /* Clear runtime counter $05B7 */
+    game->wram[0x05B7] = 0x00;
+    game->wram[0x05B8] = 0x00;
+
+    /* Execute APU handshake transport ($2140 = 0x7F after acknowledgement on $2143) */
+    game->apu_ports[3] = 0x7F;
+    game->apu_ports[0] = 0x7F;
+
+    /* Initialize active audio channel masks to 0xFFFF */
+    game->wram[0x05A7] = 0xFF;
+    game->wram[0x05A8] = 0xFF;
+
+    game->wram[0x05A9] = 0xFF;
+    game->wram[0x05AA] = 0xFF;
+
+    game->wram[0x05AB] = 0xFF;
+    game->wram[0x05AC] = 0xFF;
+
+    /* Clear channel status words */
+    game->wram[0x05A3] = 0x00;
+    game->wram[0x05A4] = 0x00;
+
+    game->wram[0x05A5] = 0x00;
+    game->wram[0x05A6] = 0x00;
+
+    /* Return via RTL to cold boot caller at $C0:CB88 */
+    game->current_pc = MF_SNES_ADDR_BOOT_CONT3;
+    game->next_pc = MF_SNES_ADDR_INIT_PHASE4;
+    game->state = MF_GAME_STATE_INIT_PHASE4;
+    game->ready_for_jump = true;
+}
+
+

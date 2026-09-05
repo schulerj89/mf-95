@@ -32,4 +32,19 @@ void sub_c10000_init_system(struct mf_game *game);
  */
 void sub_c122c0_init_phase2(struct mf_game *game);
 
+/*
+ * Subroutine: sub_c11823_init_phase3
+ * Bank:       $C1
+ * Address:    $C1:1823
+ * File Offset: 0x011823
+ * Description: Third phase of system initialization called from the cold boot
+ *              dispatcher. Configures game frame timing ticks ($0DD7 = 0x000A),
+ *              clears runtime counter $05B7, initializes active channel masks
+ *              ($05A7, $05A9, $05AB = 0xFFFF), executes initial APU communication
+ *              handshake ($2140 = 0x7F after acknowledgement on $2143), clears
+ *              channel status words $05A3 and $05A5, and returns via RTL to the
+ *              boot caller at $C0:CB88.
+ */
+void sub_c11823_init_phase3(struct mf_game *game);
+
 #endif /* MF_SYSTEM_H */

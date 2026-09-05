@@ -13,6 +13,8 @@
 #define MF_SNES_ADDR_INIT_PHASE2   0xC122C0
 #define MF_SNES_ADDR_BOOT_CONT2    0xC0CB84
 #define MF_SNES_ADDR_INIT_PHASE3   0xC11823
+#define MF_SNES_ADDR_BOOT_CONT3    0xC0CB88
+#define MF_SNES_ADDR_INIT_PHASE4   0xC10966
 
 #define MF_SNES_FILE_OFFSET_RESET_VECTOR  0x00CB63
 #define MF_SNES_FILE_OFFSET_BOOT_ENTRY    0x00CB6F
@@ -21,6 +23,8 @@
 #define MF_SNES_FILE_OFFSET_INIT_PHASE2   0x0122C0
 #define MF_SNES_FILE_OFFSET_BOOT_CONT2    0x00CB84
 #define MF_SNES_FILE_OFFSET_INIT_PHASE3   0x011823
+#define MF_SNES_FILE_OFFSET_BOOT_CONT3    0x00CB88
+#define MF_SNES_FILE_OFFSET_INIT_PHASE4   0x010966
 
 #define MF_WRAM_SIZE 0x20000 /* 128 KiB SNES Work RAM */
 
@@ -30,6 +34,7 @@ typedef enum {
     MF_GAME_STATE_INIT_SYSTEM,
     MF_GAME_STATE_INIT_PHASE2,
     MF_GAME_STATE_INIT_PHASE3,
+    MF_GAME_STATE_INIT_PHASE4,
     MF_GAME_STATE_TITLE,
     MF_GAME_STATE_MENU,
     MF_GAME_STATE_GAMEPLAY
@@ -40,6 +45,7 @@ typedef struct mf_game {
     mf_audio_t audio;
     mf_game_state_t state;
     uint8_t wram[MF_WRAM_SIZE];
+    uint8_t apu_ports[4];
 
     /* Architectural state placeholders */
     bool interrupts_enabled;
@@ -69,12 +75,12 @@ void mf_game_init(mf_game_t *game);
 void mf_boot_reset(mf_game_t *game);
 
 /*
- * Subroutine: sub_c11823_init_phase3 (Placeholder / Next Target)
+ * Subroutine: sub_c10966_init_phase4 (Placeholder / Next Target)
  * Bank:       $C1
- * Address:    $C1:1823
- * File Offset: 0x011823
- * Description: Third system initialization routine called after sub_c122c0 returns.
+ * Address:    $C1:0966
+ * File Offset: 0x010966
+ * Description: Fourth system initialization routine called after sub_c11823 returns.
  */
-void sub_c11823_init_phase3(mf_game_t *game);
+void sub_c10966_init_phase4(mf_game_t *game);
 
 #endif /* MF_GAME_H */
