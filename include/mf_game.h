@@ -103,6 +103,8 @@ typedef struct mf_game {
 
 /* Core Game Lifecycle */
 void mf_game_init(mf_game_t *game);
+void mf_game_step(mf_game_t *game);
+
 
 /*
  * Subroutine: mf_boot_reset

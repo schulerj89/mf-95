@@ -44,12 +44,23 @@ add_executable(mf95_tests ${MF95_TEST_SOURCES})
 target_include_directories(mf95_tests PRIVATE tests)
 target_link_libraries(mf95_tests mf95_core)
 
+# Interactive application executable
+add_executable(mf95 WIN32 src/main.c)
+target_link_libraries(mf95 mf95_core)
+if(WIN32)
+    target_link_libraries(mf95 user32 gdi32 winmm)
+endif()
+
 if(MSVC)
     target_compile_options(mf95_core PRIVATE /W4 /utf-8)
     target_compile_options(mf95_tests PRIVATE /W4 /utf-8)
+    target_compile_options(mf95 PRIVATE /W4 /utf-8)
 else()
     target_compile_options(mf95_core PRIVATE -Wall -Wextra)
     target_compile_options(mf95_tests PRIVATE -Wall -Wextra)
+    target_compile_options(mf95 PRIVATE -Wall -Wextra)
     target_link_libraries(mf95_tests m)
+    target_link_libraries(mf95 m)
 endif()
+
 

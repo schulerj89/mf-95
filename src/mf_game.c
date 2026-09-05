@@ -15,6 +15,60 @@ void mf_game_init(mf_game_t *game) {
     game->ready_for_jump = false;
 }
 
+void mf_game_step(mf_game_t *game) {
+    if (!game) return;
+
+    switch (game->state) {
+    case MF_GAME_STATE_RESET:
+        mf_boot_reset(game);
+        break;
+    case MF_GAME_STATE_BOOT:
+        sub_c10000_init_system(game);
+        break;
+    case MF_GAME_STATE_INIT_SYSTEM:
+    case MF_GAME_STATE_INIT_PHASE2:
+        sub_c122c0_init_phase2(game);
+        break;
+    case MF_GAME_STATE_INIT_PHASE3:
+        sub_c11823_init_phase3(game);
+        break;
+    case MF_GAME_STATE_INIT_PHASE4:
+        sub_c10966_init_phase4(game);
+        break;
+    case MF_GAME_STATE_INIT_PHASE5:
+        sub_c11f04_init_phase5(game);
+        break;
+    case MF_GAME_STATE_INIT_PHASE6:
+        sub_c0ce46_init_phase6(game);
+        break;
+    case MF_GAME_STATE_INIT_PHASE7:
+        sub_c139f3_init_phase7(game);
+        break;
+    case MF_GAME_STATE_INIT_PHASE8:
+        sub_c122c6_init_phase8(game);
+        break;
+    case MF_GAME_STATE_BOOT_TABLES:
+        sub_c0cb9c_boot_tables(game);
+        break;
+    case MF_GAME_STATE_TITLE:
+        sub_c14de2_title_screen(game);
+        break;
+    case MF_GAME_STATE_MENU:
+        if (game->current_pc == MF_SNES_ADDR_TITLE_SCREEN || game->next_pc == MF_SNES_ADDR_MAIN_MENU) {
+            sub_c15467_main_menu(game);
+        } else if (game->next_pc == MF_SNES_ADDR_MENU_SELECT) {
+            sub_c155ae_menu_select(game);
+        }
+        break;
+    default:
+        break;
+    }
+
+    /* Render PPU scanlines into active framebuffer */
+    mf_ppu_render_frame(&game->ppu);
+}
+
+
 /*
  * Subroutine: mf_boot_reset
  * Bank:       $00 / $C0

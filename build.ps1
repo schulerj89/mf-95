@@ -32,9 +32,11 @@ $TestExePath = if ([string]::IsNullOrWhiteSpace($OutputExe)) {
 } else {
     [IO.Path]::GetFullPath($OutputExe)
 }
+$GameExePath = Join-Path $BuildDir "mf95.exe"
 
 $IncludePath = Join-Path $Root "include"
 $TestIncludePath = Join-Path $Root "tests"
+$SrcMain = Join-Path $Root "src\main.c"
 $SrcPpu = Join-Path $Root "src\mf_ppu.c"
 $SrcAudio = Join-Path $Root "src\mf_audio.c"
 $SrcAssets = Join-Path $Root "src\mf_assets.c"
@@ -51,7 +53,12 @@ call "$VcVars" > nul
 echo Compiling mf95_tests.exe (Modular Subsystem Tests: PPU + Audio + Assets + Boot + Scenes)...
 cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /I "$TestIncludePath" /Fe"$TestExePath" /Fo"$ObjDir\\" "$SrcPpu" "$SrcAudio" "$SrcAssets" "$SrcSystem" "$SrcGame" $TestSourcesStr winmm.lib
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+echo Compiling mf95.exe (Interactive Win32 Application)...
+cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /Fe"$GameExePath" /Fo"$ObjDir\\" "$SrcMain" "$SrcPpu" "$SrcAudio" "$SrcAssets" "$SrcSystem" "$SrcGame" user32.lib gdi32.lib winmm.lib /link /SUBSYSTEM:WINDOWS
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 "@
+
 
 
 Set-Content -Path $CompileScript -Value $CompileBatchContent -Encoding ASCII
