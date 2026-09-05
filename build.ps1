@@ -36,14 +36,15 @@ $TestExePath = if ([string]::IsNullOrWhiteSpace($OutputExe)) {
 $IncludePath = Join-Path $Root "include"
 $SrcPpu = Join-Path $Root "src\mf_ppu.c"
 $SrcAudio = Join-Path $Root "src\mf_audio.c"
+$SrcGame = Join-Path $Root "src\mf_game.c"
 $SrcTest = Join-Path $Root "tests\test_main.c"
 
 $CompileScript = Join-Path $BuildDir "compile.bat"
 $CompileBatchContent = @"
 @echo off
 call "$VcVars" > nul
-echo Compiling mf95_tests.exe (PPU + Audio scaffolding)...
-cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /Fe"$TestExePath" /Fo"$ObjDir\\" "$SrcPpu" "$SrcAudio" "$SrcTest" winmm.lib
+echo Compiling mf95_tests.exe (PPU + Audio + Game Subroutines)...
+cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /Fe"$TestExePath" /Fo"$ObjDir\\" "$SrcPpu" "$SrcAudio" "$SrcGame" "$SrcTest" winmm.lib
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 "@
 
