@@ -51,3 +51,31 @@ build-msvc.cmd
 ```
 
 The script locates the MSVC toolchain, compiles the core engine and tests, and executes `mf95_tests.exe`.
+
+---
+
+## 📦 Asset Extraction & Generation
+
+In accordance with our strict Zero-Asset Policy, copyrighted game assets are not distributed in this repository. Use the automated extraction utility to generate the local asset container from your legally dumped SNES cartridge ROM:
+
+### Generating the Asset Pack
+
+```powershell
+python tools/extract_assets.py --rom "F:\Games\SNES\Madden NFL 95 (USA).sfc"
+```
+
+*(If `--rom` is omitted, the script automatically scans common local paths for the ROM file).*
+
+The extractor produces **`assets/madden95.pak`** (gitignored), which packages:
+- **`table_c8_2c8b`**: Controller button mapping table (42 bytes)
+- **`table_c8_2bd0`**: Team field roster & player assignment tables (132 bytes)
+- **`title_gfx_chunk1` through `chunk4`**: Bank `$C6/$C7` graphics stream chunks (EA Sports splash, Title stadium art, Madden portrait, NFL font)
+- **`title_palette`**: Master CGRAM color palette data
+- **`title_music_4a51`**: Title theme audio sequence stream
+- **`menu_music_4a37`**: Main menu audio sequence stream
+
+### Verifying an Asset Pack
+
+```powershell
+python tools/extract_assets.py --verify --output "assets/madden95.pak"
+```

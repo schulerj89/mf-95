@@ -4,6 +4,7 @@
 #include "mf_types.h"
 #include "mf_ppu.h"
 #include "mf_audio.h"
+#include "mf_assets.h"
 #include "mf_system.h"
 
 #define MF_SNES_ADDR_RESET_VECTOR  0x00CB63
@@ -75,6 +76,7 @@ typedef enum {
 typedef struct mf_game {
     mf_ppu_t ppu;
     mf_audio_t audio;
+    mf_asset_pack_t assets;
     mf_game_state_t state;
     uint8_t wram[MF_WRAM_SIZE];
     uint8_t sram[MF_SRAM_SIZE];

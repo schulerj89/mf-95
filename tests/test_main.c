@@ -1,5 +1,6 @@
 #include "mf_ppu.h"
 #include "mf_audio.h"
+#include "mf_assets.h"
 #include "mf_game.h"
 #include "mf_system.h"
 #include <stdio.h>
@@ -598,9 +599,19 @@ int main(int argc, char **argv) {
         failures++;
     }
 
+    /* 14. Test Asset Pack Container & Loader Scaffolding */
+    printf("\n[*] Running Asset Container & Extractor Scaffolding Self-Test...\n");
+    if (mf_assets_self_test()) {
+        printf("    [PASS] Asset Container: In-memory container parsing, TOC verification,\n");
+        printf("           asset lookup by identifier, and CRC32 checks verified.\n");
+    } else {
+        printf("    [FAIL] Asset Container: Parsing or lookup verification failed.\n");
+        failures++;
+    }
+
     printf("\n----------------------------------------------------\n");
     if (failures == 0) {
-        printf("Result: ALL TESTS PASSED (PPU + Audio + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966, $C1:1F04, $C0:CE46, $C1:39F3, $C1:22C6, $C0:CB9C, $C1:4DE2)\n");
+        printf("Result: ALL TESTS PASSED (PPU + Audio + Assets + Subroutines $C0:CB6F, $C1:0000, $C1:22C0, $C1:1823, $C1:0966, $C1:1F04, $C0:CE46, $C1:39F3, $C1:22C6, $C0:CB9C, $C1:4DE2)\n");
         printf("====================================================\n");
         return 0;
     } else {

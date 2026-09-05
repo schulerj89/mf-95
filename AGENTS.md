@@ -61,3 +61,36 @@ Every converted or scaffolded subroutine in C **must** include the following com
 
 3. **Build System**:
    - MSVC / CMake build pipelines. Run `build.ps1` or `build-msvc.cmd` to compile and verify all tests before committing.
+
+---
+
+## Asset Extraction & Packaging Pipeline
+
+To comply with the Zero-Asset Policy while maintaining full runtime asset fidelity, game assets are extracted locally from a user-supplied ROM into an asset pack:
+
+1. **Extraction Tool**:
+   - `tools/extract_assets.py` parses the original SNES ROM and extracts graphics streams, palettes, audio music sequences, and data tables.
+   - Command:
+     ```powershell
+     python tools/extract_assets.py --rom "path/to/Madden NFL 95 (USA).sfc" -o assets/madden95.pak
+     ```
+
+2. **Asset Container Format (`madden95.pak`)**:
+   - Header:
+     - `magic[8]`: `"MF95PAK\0"`
+     - `version`: uint32 (currently `1`)
+     - `entry_count`: uint32 (number of contained assets)
+     - `flags`: uint32 (reserved, currently `0`)
+   - Table of Entries (immediately follows header):
+     - `name[32]`: ASCII null-terminated asset identifier (e.g. `title_gfx_chunk1`, `title_palette`)
+     - `type`: uint32 (`1` = GFX, `2` = AUDIO, `3` = PALETTE, `4` = DATA)
+     - `offset`: uint32 (absolute byte offset in package)
+     - `size`: uint32 (uncompressed byte size)
+     - `crc32`: uint32 (integrity verification)
+   - Payload data chunks follow entry table.
+
+3. **C Runtime Asset Loader**:
+   - `include/mf_assets.h` and `src/mf_assets.c` provide the runtime API (`mf_assets_load`, `mf_assets_find`, `mf_assets_free`, `mf_assets_self_test`).
+   - Integrated into game initialization in `src/mf_game.c` (`mf_game_init` loads `assets/madden95.pak` if present).
+   - If the asset pack is absent, the engine logs a clear diagnostic and falls back gracefully.
+

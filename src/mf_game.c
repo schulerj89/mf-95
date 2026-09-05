@@ -6,6 +6,9 @@ void mf_game_init(mf_game_t *game) {
     memset(game, 0, sizeof(mf_game_t));
     mf_ppu_init(&game->ppu);
     mf_audio_init(&game->audio, MF_AUDIO_DEFAULT_RATE);
+    mf_assets_init(&game->assets);
+    /* Attempt to load asset pack if present */
+    mf_assets_load(&game->assets, "assets/madden95.pak");
     game->state = MF_GAME_STATE_RESET;
     game->current_pc = MF_SNES_ADDR_RESET_VECTOR;
     game->next_pc = MF_SNES_ADDR_RESET_VECTOR;
