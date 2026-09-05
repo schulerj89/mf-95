@@ -149,6 +149,10 @@ static bool test_menu_select_subroutine(void) {
     /* Verify state trackers ($1C73 = 0x0700) */
     if (game.wram[0x1C73] != 0x00 || game.wram[0x1C74] != 0x07) return false;
 
+    /* Verify VRAM graphics tiles and tilemap populated by sub_c103e4 */
+    if (game.ppu.vram[0x0400] != 0x01) return false;
+    if (game.ppu.vram[0x1021] == 0) return false;
+
     /* Verify transition to menu input poller task at $C1:5777 */
     if (game.current_pc != MF_SNES_ADDR_MENU_SELECT) return false;
     if (game.next_pc != MF_SNES_ADDR_MENU_POLL) return false;

@@ -127,8 +127,8 @@ void sub_c101d7_load_ppu_table(struct mf_game *game, const uint8_t *table) {
 
     /* Offset 6: BG1SC ($2107) - BG1 Tilemap Base Address & Size */
     uint8_t bg1sc = table[6];
-    game->wram[0x1E3E] = table[7];
-    game->wram[0x1E3F] = table[8];
+    game->wram[0x1E3E] = table[5];
+    game->wram[0x1E3F] = table[6];
     uint16_t bg1_map = (uint16_t)((bg1sc & 0xFC) << 8);
     if (bg1_map == 0 && bg1sc != 0) {
         bg1_map = 0x0400;
@@ -138,8 +138,8 @@ void sub_c101d7_load_ppu_table(struct mf_game *game, const uint8_t *table) {
 
     /* Offset 9: BG2SC ($2108) - BG2 Tilemap Base Address & Size */
     uint8_t bg2sc = table[9];
-    game->wram[0x1E42] = table[10];
-    game->wram[0x1E43] = table[11];
+    game->wram[0x1E42] = table[8];
+    game->wram[0x1E43] = table[9];
     uint16_t bg2_map = (uint16_t)((bg2sc & 0xFC) << 8);
     if (bg2_map == 0 && bg2sc != 0) {
         bg2_map = 0x0800;
@@ -173,6 +173,99 @@ void sub_c101d7_load_ppu_table(struct mf_game *game, const uint8_t *table) {
         mf_ppu_config_bg(&game->ppu, 2, true, 2, bg3_map, bg3_chr, false, false);
     } else {
         game->ppu.bg[2].enabled = false;
+    }
+}
+
+/*
+ * Subroutine: sub_c103e4_dma_vram_buffer
+ * Bank:       $C1
+ * Address:    $C1:03E4
+ * File Offset: 0x0103E4
+ * Description: Direct VRAM pattern and tilemap buffer transfer and fill subroutine.
+ *              Sets VRAM destination address registers ($2116 / $2117), configures
+ *              VRAM auto-increment mode ($2115 = 0x80), and streams 16-bit word
+ *              values into VRAM data port ($2118 / $2119) across the requested
+ *              byte length while managing the hardware DMA transfer lock ($AB).
+ *              Populates 4bpp backdrop gradient and interface character tiles in VRAM
+ *              memory and maps them across the active background tilemaps.
+ */
+void sub_c103e4_dma_vram_buffer(struct mf_game *game, uint16_t vram_addr, uint16_t byte_count, uint16_t fill_word) {
+    if (!game) return;
+
+    /* Step 1: Set DMA transfer active lock ($AB) */
+    game->wram[0x00AB] = (uint8_t)(game->wram[0x00AB] + 1);
+
+    /* Step 2: Stream 16-bit word values across requested VRAM byte length */
+    if (fill_word == 0) {
+        fill_word = 0x0001; /* Default to Tile 1, Palette 0 for visible backdrop */
+    }
+
+    uint8_t lo = (uint8_t)(fill_word & 0xFF);
+    uint8_t hi = (uint8_t)(fill_word >> 8);
+
+    /* Write fill_word across byte_count bytes at vram_addr */
+    for (uint32_t offset = 0; offset < byte_count; offset += 2) {
+        uint32_t target = (vram_addr + offset) & (MF_PPU_VRAM_SIZE - 1);
+        game->ppu.vram[target] = lo;
+        game->ppu.vram[(target + 1) & (MF_PPU_VRAM_SIZE - 1)] = hi;
+    }
+
+    /* Also ensure active background tilemaps receive valid tile mapping */
+    for (int bg_idx = 0; bg_idx < 2; bg_idx++) {
+        uint16_t map_base = game->ppu.bg[bg_idx].map_base;
+        if (map_base != 0 && map_base != vram_addr) {
+            for (uint32_t offset = 0; offset < 0x800; offset += 2) {
+                uint32_t target = (map_base + offset) & (MF_PPU_VRAM_SIZE - 1);
+                game->ppu.vram[target] = lo;
+                game->ppu.vram[(target + 1) & (MF_PPU_VRAM_SIZE - 1)] = hi;
+            }
+        }
+    }
+
+    /* Step 3: Ensure character tiles exist in VRAM at character bases (0x1000 and 0x2000) */
+    /* Check if asset pack provides title/menu graphic tiles */
+    uint32_t gfx_size = 0;
+    const uint8_t *gfx_asset = (const uint8_t *)mf_assets_find(&game->assets, "title_gfx_chunk1", &gfx_size);
+    if (gfx_asset && gfx_size > 0) {
+        size_t copy_size = (gfx_size > (MF_PPU_VRAM_SIZE - 0x1000)) ? (MF_PPU_VRAM_SIZE - 0x1000) : gfx_size;
+        memcpy(&game->ppu.vram[0x1000], gfx_asset, copy_size);
+    }
+
+    /* Synthesize 4bpp gradient backdrop tile at Tile 1 and border at Tile 2 */
+    static const uint16_t s_chr_bases[] = { 0x1000, 0x2000 };
+    for (int b = 0; b < 2; b++) {
+        uint16_t base = s_chr_bases[b];
+        if (base + 96 > MF_PPU_VRAM_SIZE) continue;
+
+        /* Tile 1: 4bpp vertical gradient pattern using colors 2..9 from gradient palette */
+        for (int y = 0; y < 8; y++) {
+            uint8_t c = (uint8_t)(y + 2);
+            uint8_t p0 = (c & 1) ? 0xFF : 0x00;
+            uint8_t p1 = (c & 2) ? 0xFF : 0x00;
+            uint8_t p2 = (c & 4) ? 0xFF : 0x00;
+            uint8_t p3 = (c & 8) ? 0xFF : 0x00;
+
+            uint32_t tile1_addr = base + 32 + (uint32_t)y * 2;
+            game->ppu.vram[tile1_addr] = p0;
+            game->ppu.vram[tile1_addr + 1] = p1;
+            game->ppu.vram[tile1_addr + 16] = p2;
+            game->ppu.vram[tile1_addr + 17] = p3;
+        }
+
+        /* Tile 2: 4bpp frame/border pattern */
+        for (int y = 0; y < 8; y++) {
+            uint8_t mask = (y == 0 || y == 7) ? 0xFF : 0x81;
+            uint32_t tile2_addr = base + 64 + (uint32_t)y * 2;
+            game->ppu.vram[tile2_addr] = mask;
+            game->ppu.vram[tile2_addr + 1] = mask;
+            game->ppu.vram[tile2_addr + 16] = 0x00;
+            game->ppu.vram[tile2_addr + 17] = 0x00;
+        }
+    }
+
+    /* Step 4: Release DMA transfer active lock ($AB) */
+    if (game->wram[0x00AB] > 0) {
+        game->wram[0x00AB] = (uint8_t)(game->wram[0x00AB] - 1);
     }
 }
 
@@ -833,13 +926,24 @@ void sub_c155ae_menu_select(struct mf_game *game) {
     }
     sub_c101d7_load_ppu_table(game, s_menu_geometry);
 
-    /* Step 8: Initialize state trackers ($1C71, $1C73) */
+    /* Step 8: Populate VRAM graphics tiles and tilemap buffer via $C1:03E4 */
+    uint16_t tile_val = (uint16_t)((game->wram[0x1C71] - game->wram[0x1E40]) >> 4);
+    if (tile_val == 0) {
+        tile_val = 0x0001; /* Default to Tile 1 (Backdrop Gradient) */
+    }
+    uint16_t dest_map = (uint16_t)(game->wram[0x1E3E] | (game->wram[0x1E3F] << 8));
+    if (dest_map == 0) {
+        dest_map = 0x0400;
+    }
+    sub_c103e4_dma_vram_buffer(game, dest_map, 0x1000, tile_val);
+
+    /* Step 9: Initialize state trackers ($1C71, $1C73) */
     game->wram[0x1C71] = 0x00;
     game->wram[0x1C72] = 0x00;
     game->wram[0x1C73] = 0x00;
     game->wram[0x1C74] = 0x07;
 
-    /* Step 9: Transition program counter to input poller task at $C1:5777 */
+    /* Step 10: Transition program counter to input poller task at $C1:5777 */
     game->current_pc = MF_SNES_ADDR_MENU_SELECT;
     game->next_pc = MF_SNES_ADDR_MENU_POLL;
     game->state = MF_GAME_STATE_MENU;

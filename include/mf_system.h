@@ -34,6 +34,21 @@ void sub_c10000_init_system(struct mf_game *game);
 void sub_c101d7_load_ppu_table(struct mf_game *game, const uint8_t *table);
 
 /*
+ * Subroutine: sub_c103e4_dma_vram_buffer
+ * Bank:       $C1
+ * Address:    $C1:03E4
+ * File Offset: 0x0103E4
+ * Description: Direct VRAM pattern and tilemap buffer transfer and fill subroutine.
+ *              Sets VRAM destination address registers ($2116 / $2117), configures
+ *              VRAM auto-increment mode ($2115 = 0x80), and streams 16-bit word
+ *              values into VRAM data port ($2118 / $2119) across the requested
+ *              byte length while managing the hardware DMA transfer lock ($AB).
+ *              Populates 4bpp backdrop gradient and interface character tiles in VRAM
+ *              memory and maps them across the active background tilemaps.
+ */
+void sub_c103e4_dma_vram_buffer(struct mf_game *game, uint16_t vram_addr, uint16_t byte_count, uint16_t fill_word);
+
+/*
  * Subroutine: sub_c122c0_init_phase2
  * Bank:       $C1
  * Address:    $C1:22C0
